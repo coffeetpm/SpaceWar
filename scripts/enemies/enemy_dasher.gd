@@ -35,6 +35,9 @@ func _ready() -> void:
 	if core:
 		_core_base_modulate = core.modulate
 	_build_telegraph_visual()
+	## 由 NeonStyleManager 依 Tier 自動套用霓虹裝飾。
+	if NeonStyleManager and NeonStyleManager.has_method("apply_to"):
+		NeonStyleManager.apply_to(self)
 
 
 func _build_telegraph_visual() -> void:
@@ -155,6 +158,8 @@ func _get_sprite() -> CanvasItem:
 
 
 func _die() -> void:
+	if _death_started:
+		return
 	_death_started = true
 	collision_layer = 0
 	collision_mask = 0

@@ -183,6 +183,8 @@ func _process(delta: float) -> void:
 		for body in _area.get_overlapping_bodies():
 			if body.is_in_group("enemy") and body.has_method("take_damage"):
 				body.take_damage(dmg)
+		for area in _area.get_overlapping_areas():
+			_damage_boss_area(area, dmg)
 		if EventBus.has_signal("player_projectile_impact"):
 			var tip: Vector2 = global_position + global_transform * Vector2(0, -length)
 			EventBus.player_projectile_impact.emit(tip, dmg)
@@ -194,6 +196,8 @@ func _process(delta: float) -> void:
 		for body in _refraction_area.get_overlapping_bodies():
 			if body.is_in_group("enemy") and body.has_method("take_damage"):
 				body.take_damage(ref_dmg)
+		for area in _refraction_area.get_overlapping_areas():
+			_damage_boss_area(area, ref_dmg)
 		if SynergyManager:
 			var weapon_tags: Array[String] = (get_parent() as RunWeaponBase).get_weapon_tags() if get_parent() is RunWeaponBase else []
 			var dir := -global_transform.y.normalized()
@@ -233,6 +237,21 @@ func _on_body_entered(body: Node2D) -> void:
 		if RunState:
 			dmg = int(dmg * RunState.get_ignition_damage_mult())
 		body.take_damage(dmg)
+
+
+## Boss 採用 Area2D hitbox（非 PhysicsBody），需另向上找最近的 boss 節點。
+## 支援 NeonTitan 的弱點：弱點 Area 本身實作 take_damage 時直接呼叫。
+func _damage_boss_area(area: Area2D, dmg: int) -> void:
+	if area == null or not is_instance_valid(area):
+		return
+	if area.is_in_group("boss") and area.has_method("take_damage"):
+		area.take_damage(dmg)
+		return
+	var p: Node = area.get_parent()
+	while p and not (p.is_in_group("boss") and p.has_method("take_damage")):
+		p = p.get_parent()
+	if p:
+		p.take_damage(dmg)
 
 
 func set_damage(d: int) -> void:

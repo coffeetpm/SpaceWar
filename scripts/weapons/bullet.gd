@@ -2,11 +2,18 @@ extends Area2D
 class_name Bullet
 ## Single bullet: pooled, neon trail, additive material. Movement in _physics_process.
 
+const HitSpark := preload("res://scripts/vfx/hit_spark.gd")
+
 signal returned_to_pool
 
-@export var lifetime: float = 4.0
+## 預設 2 秒以節省效能；個別武器可於 setup() 後覆蓋。
+@export var lifetime: float = 2.0
 @export var trail_length: int = 22
 @export var trail_width: float = 8.0
+## PointLight2D 預設能量（0 = 停用光源）
+@export var light_energy: float = 1.4
+## Hit Spark 觸發顏色（None = 使用 modulate；設定後命中 / 消散均採此色）
+@export var hit_spark_color: Color = Color(0, 0, 0, 0)
 
 var _direction: Vector2
 var _speed: float
@@ -41,6 +48,7 @@ const TRAIL_STYLES: Dictionary = {
 @onready var _trail: Line2D = $Trail
 @onready var _visual_glow: Polygon2D = $Visual/Glow
 @onready var _visual_core: Polygon2D = $Visual/Core
+@onready var _core_light: PointLight2D = get_node_or_null("Visual/CoreLight") as PointLight2D
 
 func set_pool(pool: BulletPool) -> void:
 	_pool = pool
@@ -82,6 +90,12 @@ func setup(global_pos: Vector2, direction: Vector2, speed: float, damage: int, i
 		_visual_glow.color = Color(c.r, c.g, c.b, c.a * alpha_scale)
 	if _visual_core:
 		_visual_core.color = ArtDirection.TIER2_BULLET_CORE_PLAYER if is_player else ArtDirection.TIER2_BULLET_CORE_ENEMY
+	## 同步 PointLight2D 顏色與 HDR bullet 核心一致（Forward+ 支援）
+	if _core_light:
+		var light_c: Color = ArtDirection.TIER2_BULLET_CORE_PLAYER if is_player else ArtDirection.TIER2_BULLET_CORE_ENEMY
+		_core_light.color = Color(light_c.r, light_c.g, light_c.b, 1.0)
+		_core_light.energy = light_energy * (REFRACTION_ECHO_ALPHA if _is_refraction_echo else 1.0)
+		_core_light.enabled = light_energy > 0.0
 	_apply_trail_style(weapon_id, is_player)
 	if _is_refraction_echo and _trail:
 		trail_length = maxi(4, int(float(trail_length) * REFRACTION_ECHO_TRAIL_SCALE))
@@ -162,15 +176,15 @@ func _physics_process(delta: float) -> void:
 		_trail_global_points.remove_at(0)
 	if Engine.get_physics_frames() % 2 == 0:
 		_update_trail_visual()
-	# Keep palette color (no rainbow on bullets); refraction echo stays fainter
-	var base_mod := ArtDirection.PLAYER_BULLET if _is_player else ArtDirection.ENEMY_BULLET
-	modulate = Color(base_mod.r, base_mod.g, base_mod.b, base_mod.a * (REFRACTION_ECHO_ALPHA if _is_refraction_echo else 1.0))
+	## modulate 已於 setup() 一次設定，這裡不再每 frame 重寫（效能修正）。
 	_timer -= delta
 	if _timer <= 0.0:
+		## lifetime 消散 / 離開畫面：微弱 hit spark
+		_spawn_hit_spark(false)
 		_return()
 	# Near-miss dodge feedback (enemy bullets only, once per bullet, when moving away)
 	if not _is_player and not _dodge_triggered:
-		var player := get_tree().get_first_node_in_group("player") as Node2D
+		var player: Node2D = PlayerRef.get_player() if PlayerRef else get_tree().get_first_node_in_group("player") as Node2D
 		if player and is_instance_valid(player):
 			var dist := global_position.distance_to(player.global_position)
 			if dist < DODGE_NEAR_RADIUS:
@@ -208,29 +222,60 @@ func _on_body_entered(body: Node2D) -> void:
 			body.take_damage(_damage)
 		if EventBus.has_signal("player_projectile_impact"):
 			EventBus.player_projectile_impact.emit(global_position, _damage)
+		_spawn_hit_spark(true)
 		_return()
 	elif not _is_player and body.is_in_group("player"):
 		if body.has_method("take_damage"):
 			body.take_damage(_damage, self)
+		_spawn_hit_spark(true)
 		_return()
 
 
 func _on_area_entered(area: Area2D) -> void:
 	if _is_player:
-		var boss = area if area.is_in_group("boss") else (area.get_parent() if is_instance_valid(area.get_parent()) else null)
-		if boss and boss.is_in_group("boss") and boss.has_method("take_damage"):
+		var boss: Node = null
+		if area.is_in_group("boss") and area.has_method("take_damage"):
+			boss = area
+		else:
+			var p: Node = area.get_parent()
+			while p and not (p.is_in_group("boss") and p.has_method("take_damage")):
+				p = p.get_parent()
+			boss = p
+		if boss:
 			boss.take_damage(_damage)
 			if EventBus.has_signal("player_projectile_impact"):
 				EventBus.player_projectile_impact.emit(global_position, _damage)
+			_spawn_hit_spark(true)
 			_return()
+
+
+## 生成 Hit Spark 粒子。is_impact = true 為命中（較強烈）；false 為 lifetime 消散（較微弱）。
+func _spawn_hit_spark(is_impact: bool) -> void:
+	var tree := get_tree()
+	if tree == null or tree.current_scene == null:
+		return
+	var c: Color = hit_spark_color
+	if c.a <= 0.0:
+		## 依子彈陣營採用合理預設 HDR 色
+		c = Color(0.4, 1.8, 3.0, 1.0) if _is_player else Color(3.0, 0.5, 0.9, 1.0)
+	var amt: int = 14 if is_impact else 6
+	HitSpark.spawn(tree.current_scene, global_position, c, amt)
 
 
 func _update_trail_visual() -> void:
 	if not _trail:
 		return
-	_trail.clear_points()
-	for p in _trail_global_points:
-		_trail.add_point(to_local(p))
+	## 性能：用 set_points 一次替換整條軌跡，避免 clear + N 次 add_point 的多次 bounds 重算。
+	var n: int = _trail_global_points.size()
+	if n == 0:
+		_trail.clear_points()
+	else:
+		var local_points: PackedVector2Array = PackedVector2Array()
+		local_points.resize(n)
+		var xform_inv: Transform2D = global_transform.affine_inverse()
+		for i in n:
+			local_points[i] = xform_inv * _trail_global_points[i]
+		_trail.points = local_points
 	# Thick head, thin tail; palette gradient
 	if _trail.get_point_count() > 1:
 		if _trail.gradient == null:

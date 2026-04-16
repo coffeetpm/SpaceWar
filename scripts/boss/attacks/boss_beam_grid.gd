@@ -57,6 +57,9 @@ func _make_line_beam(horizontal: bool, index: int) -> Node2D:
 
 
 func start_attack() -> void:
+	## 重入守衛：已在 active 中則忽略，避免 timer race condition。
+	if _state == "active":
+		return
 	_state = "active"
 	visible = true
 	_timer = 0.0

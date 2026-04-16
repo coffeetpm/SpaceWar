@@ -11,7 +11,7 @@ var _player: Node2D
 
 func _ready() -> void:
 	super._ready()
-	_player = get_tree().get_first_node_in_group(player_group) as Node2D
+	_player = PlayerRef.get_player() if PlayerRef else get_tree().get_first_node_in_group(player_group) as Node2D
 	var tl: Node = get_node_or_null("TelegraphLine")
 	if tl and "telegraph_duration" in tl:
 		tl.set("telegraph_duration", telegraph_show_sec)

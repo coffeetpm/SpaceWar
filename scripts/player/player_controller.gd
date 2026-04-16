@@ -3,6 +3,8 @@ class_name PlayerController
 ## Player: WASD movement, smooth acceleration, auto-fire weapon.
 ## Hitbox smaller than sprite; damage + invulnerability frames; triggers screen shake.
 
+const NeonWings := preload("res://scripts/neon_wings.gd")
+
 signal died
 
 const ACCELERATION := 1800.0
@@ -47,6 +49,40 @@ func _ready() -> void:
 	EventBus.exp_collected.connect(_on_exp_collected)
 	if EventBus.has_signal("boss_clear_player_glow"):
 		EventBus.boss_clear_player_glow.connect(_on_boss_clear_glow)
+	_spawn_neon_wings()
+
+
+## 於 _ready 自動生成玩家霓虹翼並掛到飛機後方（機身尾端）。
+## 使用 res://scripts/neon_wings.gd 程序化雙層（Core + Glow）HDR Shader。
+func _spawn_neon_wings() -> void:
+	if get_node_or_null("NeonWings"):
+		return  ## 場景已有自訂翼就不覆蓋
+	var wings := Node2D.new()
+	wings.name = "NeonWings"
+	wings.set_script(NeonWings)
+	## 幾何：適配 Player 飛機尺寸（Visual scale 1.25，機身 ±14px）
+	wings.wing_span = 54.0
+	wings.sweep_angle = 32.0
+	wings.wing_depth = 18.0
+	wings.jag_amount = 0.55
+	wings.glow_padding = 12.0
+	wings.anchor_offset = Vector2(0, 12)
+	## HDR 青藍霓虹；G/B > 1.0 驅動 Bloom
+	wings.neon_color = Color(0.38, 2.30, 3.10, 1.0)
+	wings.pulse_speed = 3.0
+	wings.pulse_strength = 0.32
+	wings.core_brightness = 2.4
+	wings.glow_softness = 0.6
+	wings.edge_sharpness = 0.06
+	wings.tip_boost = 1.6
+	## Roll：反應玩家 velocity.x
+	wings.auto_roll_from_parent = true
+	wings.roll_amount = 0.28
+	wings.roll_smoothness = 9.0
+	## 渲染於 Visual 之下
+	wings.z_as_relative = true
+	wings.z_index = -1
+	add_child(wings)
 
 
 func _on_max_hp_upgrade(value: int) -> void:
@@ -90,6 +126,7 @@ const WEAPON_SCENES: Dictionary = {
 	"burst": "res://scenes/weapons/weapon_burst.tscn",
 	"homing": "res://scenes/weapons/weapon_homing.tscn",
 	"rear": "res://scenes/weapons/weapon_rear.tscn",
+	"wing_gun": "res://scenes/weapons/weapon_wing_gun.tscn",
 }
 
 
@@ -133,6 +170,23 @@ func _spawn_weapon(weapon_id: String = "spread") -> void:
 		weapon_mount.add_child(_weapon)
 
 
+## 手動發射（從雙翼各射一發霓虹子彈）。
+## 由輸入 / 測試 / 劇情演出直接呼叫；獨立於自動武器之外。
+func shoot(damage_amount: int = 3, speed: float = 620.0) -> void:
+	var wings := get_node_or_null("NeonWings") as Node2D
+	var dir: Vector2 = Vector2.UP
+	var origins: Array[Vector2] = []
+	if wings and wings.has_method("get_wing_tip_global"):
+		origins.append(wings.get_wing_tip_global(false))
+		origins.append(wings.get_wing_tip_global(true))
+	else:
+		var r: Vector2 = global_transform.x
+		origins.append(global_position - r * 18.0)
+		origins.append(global_position + r * 18.0)
+	for o in origins:
+		EventBus.bullet_spawn_requested.emit(o, dir, speed, damage_amount, true, "wing_gun")
+
+
 func _physics_process(delta: float) -> void:
 	if RunState and RunState.gameplay_frozen:
 		return
@@ -173,11 +227,23 @@ func _is_invulnerable() -> bool:
 
 func _die() -> void:
 	set_physics_process(false)
+	set_process(false)
+	velocity = Vector2.ZERO
 	if _weapon:
 		_weapon.set_process(false)
+	## 停用碰撞，避免死亡後敵人仍不斷觸發 take_damage
+	collision_layer = 0
+	collision_mask = 0
+	if hitbox:
+		hitbox.set_deferred("disabled", true)
 	EventBus.player_died.emit()
 	died.emit()
-	# Optional: play death VFX then queue_free or hide
+	## 視覺淡出；保留節點以供 UI 讀取最終狀態，延遲回收
+	var t := create_tween()
+	t.tween_property(self, "modulate:a", 0.0, 0.45)
+	t.tween_callback(func() -> void:
+		visible = false
+	)
 
 
 func _on_player_damaged_signal(_amount: int, _source: Node) -> void:

@@ -1,0 +1,5 @@
+res://scenes/main/main.tscn
+res://scripts/vfx/world_environment_setup.gd
+res://scripts/stage_manager.gd
+res://scripts/enemies/enemy_base.gd
+res://scripts/enemies/enemy_dasher.gd

@@ -1,0 +1,40 @@
+[gd_scene load_steps=5 format=3 uid="uid://neon_titan_boss"]
+
+[ext_resource type="Script" path="res://scripts/boss/neon_titan.gd" id="1_root"]
+[ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="2_add"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_titan"]
+radius = 44.0
+
+[node name="NeonTitan" type="Node2D" groups=["boss"]]
+script = ExtResource("1_root")
+max_hp = 900
+armored_damage_reduction = 0.65
+weak_point_hp = 120
+exposed_damage_multiplier = 1.35
+phase2_threshold = 0.66
+phase3_threshold = 0.33
+base_move_speed = 60.0
+hover_radius = 90.0
+
+[node name="Hitbox" type="Area2D" parent="."]
+collision_layer = 4
+collision_mask = 2
+monitorable = true
+monitoring = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("CircleShape2D_titan")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="OuterRing" type="Line2D" parent="Visual"]
+width = 4.0
+default_color = Color(0.55, 0.95, 1.0, 0.85)
+material = ExtResource("2_add")
+points = PackedVector2Array(54, 0, 49.84, 20.67, 38.18, 38.18, 20.67, 49.84, 0, 54, -20.67, 49.84, -38.18, 38.18, -49.84, 20.67, -54, 0, -49.84, -20.67, -38.18, -38.18, -20.67, -49.84, 0, -54, 20.67, -49.84, 38.18, -38.18, 49.84, -20.67, 54, 0)
+
+[node name="CorePoly" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.45, 0.9, 0.98)
+material = ExtResource("2_add")
+polygon = PackedVector2Array(0, -24, -24, 0, 0, 24, 24, 0)

@@ -4,7 +4,11 @@
 
 [resource]
 shader = ExtResource("1_shader")
-shader_parameter/glow_strength = 1.15
-shader_parameter/hue_speed = 0.25
+shader_parameter/glow_strength = 1.38
+shader_parameter/hue_speed = 0.38
+shader_parameter/pulse_speed = 2.5
+shader_parameter/pulse_amount = 0.12
+shader_parameter/edge_rim_power = 2.35
+shader_parameter/edge_color = Color(0.25, 0.95, 1, 1)
 shader_parameter/base_color = Color(0.45, 0.75, 1, 0.95)
 shader_parameter/alpha = 0.92

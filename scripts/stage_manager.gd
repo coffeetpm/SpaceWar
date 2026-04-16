@@ -24,6 +24,9 @@ enum State {
 @export var burst_duration: float = 30.0
 @export var boss_burst_duration: float = 60.0
 @export var boss_every_n_bursts: int = 5
+## Roguelike：以「波次清敵」為主循環（每 N 波強化）；關閉則使用下方計時 burst。
+@export var use_wave_loop: bool = true
+@export var level_manager_path: NodePath = NodePath("LevelManager")
 
 ## Time scale during upgrade choice: world slows, does not stop. Beat and atmosphere keep running.
 const UPGRADE_CHOICE_TIME_SCALE := 0.22
@@ -39,6 +42,7 @@ const UPGRADE_CHOICE_TIME_SCALE := 0.22
 
 var burst_index: int = 1
 var _boss_instance: Node2D = null
+var _boss_spawn_epoch_s: float = 0.0
 var burst_timer: float = 0.0
 var stage_state: State = State.GAME_OVER
 var bursts_cleared: int = 0
@@ -48,6 +52,8 @@ var run_weapon_id: String = "spread"
 var _mid_run_upgrade_done: bool = false
 var _awaiting_burst_end_upgrade: bool = false  # true when upgrade pick is for end-of-burst (then advance to next burst)
 var _is_level_up_choice: bool = false  # true when upgrade UI was shown due to level-up (freeze world, no timer change)
+## 在 level-up 升級期間若波次清空事件觸發，延遲至升級完成後處理。避免 wave_cleared 被丟棄而卡關。
+var _pending_wave_cleared_number: int = -1
 
 var _hud: Control
 var _upgrade_choice: Control
@@ -55,11 +61,16 @@ var _game_over: Control
 var _system_lab: Control
 var _wave_spawner: Node
 var _save_manager: Node  # SaveManager autoload from /root/SaveManager
+var _level_manager: LevelManager
+## 目前小關卡內波次（僅 wave loop 顯示／節奏用）。
+var _current_wave_in_stage: int = 1
 
 
 func _ready() -> void:
 	_save_manager = get_node_or_null("/root/SaveManager")
 	_resolve_refs()
+	_resolve_level_manager()
+	EventBus.wave_cleared.connect(_on_event_bus_wave_cleared)
 	EventBus.player_died.connect(_on_player_died)
 	EventBus.exp_collected.connect(_on_exp_collected)
 	EventBus.level_up.connect(_on_level_up)
@@ -72,6 +83,16 @@ func _get_starting_energy_bonus() -> int:
 	if _save_manager and _save_manager.has_method("get_starting_energy_bonus"):
 		return _save_manager.get_starting_energy_bonus()
 	return 0
+
+
+func _resolve_level_manager() -> void:
+	if not level_manager_path.is_empty():
+		_level_manager = get_node_or_null(level_manager_path) as LevelManager
+	if _level_manager == null:
+		var lm := LevelManager.new()
+		lm.name = "LevelManager"
+		add_child(lm)
+		_level_manager = lm
 
 
 func _resolve_refs() -> void:
@@ -102,6 +123,7 @@ func _spawn_boss() -> void:
 	else:
 		inst.global_position = viewport_center + Vector2(0, -100)
 	_boss_instance = inst
+	_boss_spawn_epoch_s = Time.get_ticks_msec() * 0.001
 	if EventBus and EventBus.has_signal("boss_spawned"):
 		EventBus.boss_spawned.emit(inst)
 
@@ -166,7 +188,10 @@ func start_game() -> void:
 	_upgrades_taken_this_run.clear()
 	_mid_run_upgrade_done = false
 	_awaiting_burst_end_upgrade = false
+	_is_level_up_choice = false
+	_pending_wave_cleared_number = -1
 	burst_timer = run_duration
+	_current_wave_in_stage = 1
 	Engine.time_scale = 1.0
 	_start_spawner()
 
@@ -180,6 +205,9 @@ func _process(delta: float) -> void:
 		return
 	if RunState:
 		RunState.tick_opening(delta)
+	if use_wave_loop:
+		_update_hud()
+		return
 	var run_elapsed: float = run_duration - burst_timer
 	if run_elapsed >= mid_run_upgrade_at and not _mid_run_upgrade_done:
 		_trigger_mid_run_upgrade()
@@ -205,6 +233,8 @@ func get_run_elapsed() -> float:
 
 ## Run rhythm phase: 0 = stabilize (0–8s), 1 = density up (8–18s), 2 = ignition window (18–28s), 3 = peak (28–35s), 4 = release (35–40s).
 func get_run_phase() -> int:
+	if use_wave_loop:
+		return clampi(_current_wave_in_stage - 1, 0, 4)
 	var e := get_run_elapsed()
 	if e < 8.0: return 0
 	if e < 18.0: return 1
@@ -214,13 +244,28 @@ func get_run_phase() -> int:
 
 
 ## For boss design: 0 = not boss, 1 = pattern learning, 2 = pressure, 3 = peak chaos.
+## 優先讀取 boss 自身 current_phase（血量驅動）；否則 fallback 到時間驅動（舊行為）。
 func get_boss_phase() -> int:
 	if not _boss_instance or not is_instance_valid(_boss_instance):
 		return 0
-	var run_elapsed := get_run_elapsed()
-	var boss_elapsed := run_elapsed - boss_spawn_at
-	if boss_elapsed < 1.0: return 1
-	if boss_elapsed < 2.5: return 2
+	if "current_phase" in _boss_instance:
+		var p: int = int(_boss_instance.current_phase)
+		if p >= 1:
+			return clampi(p, 1, 3)
+	var boss_elapsed: float = 0.0
+	if use_wave_loop:
+		boss_elapsed = Time.get_ticks_msec() * 0.001 - _boss_spawn_epoch_s
+	else:
+		boss_elapsed = get_run_elapsed() - boss_spawn_at
+	## HP-based fallback：若 boss 有 current_hp/max_hp 使用血量推算
+	if "current_hp" in _boss_instance and "max_hp" in _boss_instance:
+		var hp_pct: float = float(_boss_instance.current_hp) / float(maxi(1, int(_boss_instance.max_hp)))
+		if hp_pct <= 0.33: return 3
+		if hp_pct <= 0.66: return 2
+		return 1
+	## Legacy：時間閾值
+	if boss_elapsed < 12.0: return 1
+	if boss_elapsed < 24.0: return 2
 	return 3
 
 
@@ -228,18 +273,26 @@ func _update_hud() -> void:
 	if _hud:
 		var wl: Label = _hud.get_node_or_null("HUDPanel/WaveLabel") as Label
 		if wl:
-			wl.text = "Stage %d / Burst %d" % [burst_index, burst_index]
+			if use_wave_loop and _level_manager:
+				wl.text = "小關卡 %d · 波 %d/%d" % [burst_index, _current_wave_in_stage, _level_manager.waves_per_upgrade]
+			else:
+				wl.text = "Stage %d / Burst %d" % [burst_index, burst_index]
 		var run_status: Label = _hud.get_node_or_null("TopBar/RunStatusLabel") as Label
 		if run_status:
 			if stage_state == State.BURST_END:
 				run_status.text = "Stage cleared"
 			elif _boss_instance and is_instance_valid(_boss_instance):
 				run_status.text = "Boss!"
+			elif use_wave_loop:
+				run_status.text = "小關卡 %d" % burst_index
 			else:
 				run_status.text = "Stage %d" % burst_index
 		var tl: Label = _hud.get_node_or_null("HUDPanel/TimerLabel") as Label
 		if tl:
-			tl.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
+			if use_wave_loop and _level_manager:
+				tl.text = "波次 %d/%d" % [_current_wave_in_stage, _level_manager.waves_per_upgrade]
+			else:
+				tl.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
 	if _hud:
 		var el: Label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
 		if el:
@@ -251,6 +304,18 @@ func _update_hud() -> void:
 
 
 func _start_spawner() -> void:
+	if use_wave_loop and _level_manager:
+		var is_boss: bool = _level_manager.is_boss_mini_stage(burst_index)
+		if is_boss:
+			_stop_spawner()
+			if boss_scene and not _boss_instance:
+				_spawn_boss()
+			return
+		_remove_boss()
+		_current_wave_in_stage = 1
+		if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
+			_wave_spawner.start_rogu_wave(burst_index, _current_wave_in_stage)
+		return
 	var is_boss: bool = _is_boss_burst(burst_index)
 	if _wave_spawner and _wave_spawner.has_method("start_burst"):
 		_wave_spawner.start_burst(burst_index, run_duration, is_boss)
@@ -260,6 +325,35 @@ func _start_spawner() -> void:
 		_set_spawner_burst_time()
 	if is_boss and boss_scene and not _boss_instance:
 		_spawn_boss()
+
+
+func _on_event_bus_wave_cleared(wave_number: int) -> void:
+	if not use_wave_loop or not _level_manager:
+		return
+	## 允許 RUNNING / UPGRADE_PICK 狀態：後者表示 level-up 升級中，需延遲處理。
+	if stage_state != State.RUNNING and stage_state != State.UPGRADE_PICK:
+		return
+	if _is_level_up_choice:
+		## 記錄最近一次（多隻敵機同幀死亡亦只保留最大 wave 編號即可）
+		_pending_wave_cleared_number = maxi(_pending_wave_cleared_number, wave_number)
+		return
+	_process_wave_cleared(wave_number)
+
+
+## 將 wave_cleared 核心流程抽出，便於升級完成後補發。
+func _process_wave_cleared(wave_number: int) -> void:
+	_current_wave_in_stage = wave_number
+	if _level_manager.should_offer_upgrade_after_wave(wave_number):
+		bursts_cleared = burst_index
+		_stop_spawner()
+		stage_state = State.BURST_END
+		_awaiting_burst_end_upgrade = true
+		_transition_to_upgrade_pick()
+		return
+	var next_wave: int = wave_number + 1
+	_current_wave_in_stage = next_wave
+	if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
+		_wave_spawner.start_rogu_wave(burst_index, next_wave)
 
 
 func _set_spawner_burst_time() -> void:
@@ -315,6 +409,7 @@ func _remove_boss() -> void:
 			EventBus.boss_despawned.emit()
 		_boss_instance.queue_free()
 		_boss_instance = null
+	_boss_spawn_epoch_s = 0.0
 
 
 ## Boss reward: one gameplay unlock (weapon / synergy / force). No stat boost. "I unlocked a new way to play."
@@ -499,6 +594,11 @@ func _on_upgrade_chosen(upgrade_resource: Resource) -> void:
 		if _upgrade_choice:
 			_upgrade_choice.hide()
 		stage_state = State.RUNNING
+		## 升級期間若波次已清空，補發流程避免卡關（否則 wave_cleared 信號被丟失）。
+		if _pending_wave_cleared_number >= 0:
+			var wn: int = _pending_wave_cleared_number
+			_pending_wave_cleared_number = -1
+			_process_wave_cleared(wn)
 		return
 	_transition_to_running_after_upgrade()
 

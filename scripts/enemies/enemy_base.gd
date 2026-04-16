@@ -29,6 +29,8 @@ var _attack_brighten_until: float = 0.0
 var _hit_pulse_until: float = 0.0
 var _death_started: bool = false
 var _core_base_modulate: Color = Color(1, 1, 1, 1)
+## 若為 true：跳過預設 chase 移動（由外部如 TrajectoryMover 控制），仍保留射擊 AI。
+var _motion_override: bool = false
 
 func _ready() -> void:
 	add_to_group("enemy")
@@ -41,6 +43,9 @@ func _ready() -> void:
 	var core := get_node_or_null("Visual/Core") as CanvasItem
 	if core:
 		_core_base_modulate = core.modulate
+	## 由 NeonStyleManager 依 Tier 自動套用霓虹裝飾（無需逐場景手動掛）。
+	if NeonStyleManager and NeonStyleManager.has_method("apply_to"):
+		NeonStyleManager.apply_to(self)
 
 
 func _find_player() -> void:
@@ -63,7 +68,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if RunState and RunState.gameplay_frozen:
 		return
-	if _player and is_instance_valid(_player):
+	if not _motion_override and _player and is_instance_valid(_player):
 		var dir := (_player.global_position - global_position).normalized()
 		var base_vel := dir * move_speed
 		var perp := Vector2(-dir.y, dir.x)
@@ -108,9 +113,17 @@ func _update_trail() -> void:
 	var max_len := mini(trail_length, TRAIL_MAX)
 	while _trail_points.size() > max_len:
 		_trail_points.remove_at(0)
-	trail.clear_points()
-	for p in _trail_points:
-		trail.add_point(to_local(p))
+	## 性能：set_points 一次性替換，避免 clear_points + 多次 add_point。
+	var n: int = _trail_points.size()
+	if n == 0:
+		trail.clear_points()
+		return
+	var local_points: PackedVector2Array = PackedVector2Array()
+	local_points.resize(n)
+	var xform_inv: Transform2D = global_transform.affine_inverse()
+	for i in n:
+		local_points[i] = xform_inv * _trail_points[i]
+	trail.points = local_points
 
 
 func _update_core_visual() -> void:
@@ -148,6 +161,11 @@ func _pulse_core() -> void:
 	t.parallel().tween_property(core, "modulate", Color(1, 1, 1, 1), 0.08).from(Color(2.2, 2.2, 2.2, 1))
 
 
+## 由外部移動控制器（如 TrajectoryMover）呼叫：true 時略過預設 chase 移動，仍保留射擊 AI。
+func set_motion_override(enabled: bool) -> void:
+	_motion_override = enabled
+
+
 func apply_stage_scaling(stage_index: int) -> void:
 	# Difficulty curve: stage 1 = base; later stages = more HP and speed.
 	if stage_index <= 1:
@@ -171,6 +189,8 @@ func _get_sprite() -> CanvasItem:
 
 
 func _die() -> void:
+	if _death_started:
+		return
 	_death_started = true
 	collision_layer = 0
 	collision_mask = 0

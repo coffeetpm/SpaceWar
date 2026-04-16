@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://bullet_neon_glow"]
+
+[ext_resource type="Shader" path="res://resources/shaders/neon_bullet.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/hdr_color = Color(0.3, 1.8, 3, 1)
+shader_parameter/glow_intensity = 1.6
+shader_parameter/flicker_speed = 10.0
+shader_parameter/flicker_strength = 0.22
+shader_parameter/core_radius = 0.3
+shader_parameter/rim_power = 2.0
+shader_parameter/is_core_layer = false

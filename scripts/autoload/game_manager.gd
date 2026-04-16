@@ -7,7 +7,7 @@ var is_in_combat: bool = false
 var is_choosing_upgrade: bool = false
 
 func _ready() -> void:
-	EventBus.wave_cleared.connect(_on_wave_cleared)
+	# 實際遊玩循環由 World/StageManager 與 LevelManager 驅動；避免與波次完成重複彈出強化。
 	EventBus.player_died.connect(_on_player_died)
 
 
@@ -23,12 +23,6 @@ func _start_next_wave() -> void:
 	is_in_combat = true
 	is_choosing_upgrade = false
 	EventBus.wave_started.emit(current_wave)
-
-
-func _on_wave_cleared(_wave_number: int) -> void:
-	is_in_combat = false
-	is_choosing_upgrade = true
-	EventBus.upgrade_choice_requested.emit(_get_upgrade_choices())
 
 
 func _get_upgrade_choices() -> Array:
@@ -51,9 +45,8 @@ func _get_upgrade_pool() -> Array:
 	return pool
 
 
-func choose_upgrade(upgrade_resource: Resource) -> void:
-	if upgrade_resource is UpgradeData:
-		UpgradeManager.apply(upgrade_resource as UpgradeData)
+## 強化實際套用由 World/StageManager 統一負責（單一責任），這裡僅推進內部波次狀態。
+func choose_upgrade(_upgrade_resource: Resource) -> void:
 	is_choosing_upgrade = false
 	_start_next_wave()
 

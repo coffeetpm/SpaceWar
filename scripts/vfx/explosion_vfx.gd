@@ -18,13 +18,14 @@ func _ready() -> void:
 	EventBus.explosion_requested.connect(_on_explosion_requested)
 
 
-func _on_explosion_requested(global_pos: Vector2, scale_factor: float, _color: Color) -> void:
+func _on_explosion_requested(global_pos: Vector2, scale_factor: float, explosion_color: Color) -> void:
 	if RunState and RunState.is_opening_phase():
 		scale_factor *= RunState.opening_intensity_scale
-	_spawn_explosion(global_pos, scale_factor)
+	_spawn_explosion(global_pos, scale_factor, explosion_color)
 
 
-func _spawn_explosion(pos: Vector2, scale_factor: float) -> void:
+func _spawn_explosion(pos: Vector2, scale_factor: float, explosion_color: Color) -> void:
+	NeonExplosionBurst.spawn(self, pos, explosion_color, scale_factor)
 	_spawn_core_flash(pos, scale_factor)
 	_spawn_energy_spikes(pos, scale_factor)
 	_spawn_digital_glitch(pos, scale_factor)

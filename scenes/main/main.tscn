@@ -1,4 +1,4 @@
-[gd_scene load_steps=49 format=3 uid="uid://dagekh8w11x47"]
+[gd_scene load_steps=51 format=3 uid="uid://dagekh8w11x47"]
 
 [ext_resource type="PackedScene" uid="uid://player001" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/vfx/game_camera.tscn" id="2_camera"]
@@ -22,7 +22,7 @@
 [ext_resource type="Script" uid="uid://csmvugxeqo0jw" path="res://scripts/vfx/kill_drop_visual.gd" id="20_killdrops"]
 [ext_resource type="Script" uid="uid://b8ct1yn5qj7si" path="res://scripts/ui/weapon_select_ui.gd" id="21_weapon_select"]
 [ext_resource type="Script" uid="uid://cuk1qo7v5xamc" path="res://scripts/vfx/build_ignition_fx.gd" id="22_ignition"]
-[ext_resource type="PackedScene" path="res://scenes/boss/refraction_core.tscn" id="23_boss"]
+[ext_resource type="PackedScene" path="res://scenes/boss/neon_titan.tscn" id="23_boss"]
 [ext_resource type="Script" uid="uid://cvrmf8pefqs2d" path="res://scripts/vfx/boss_clear_vfx.gd" id="24_boss_clear"]
 [ext_resource type="Script" uid="uid://di5f6lo7tc3ql" path="res://scripts/vfx/parallax_controller.gd" id="25_parallax"]
 [ext_resource type="Material" path="res://resources/materials/parallax_stars_material.tres" id="26_mat_stars"]
@@ -40,6 +40,8 @@
 [ext_resource type="Script" uid="uid://jqelvwmvhu8r" path="res://scripts/vfx/temporal_echo_manager.gd" id="38_temporal"]
 [ext_resource type="Script" uid="uid://boajorg0v3a7p" path="res://scripts/vfx/activation_intro.gd" id="39_activation"]
 [ext_resource type="Script" uid="uid://crenccepgl7x" path="res://scripts/vfx/level_up_vfx.gd" id="40_levelup"]
+[ext_resource type="Script" uid="uid://bpd5gg37r4qpc" path="res://scripts/roguelike/level_manager.gd" id="41_level_mgr"]
+[ext_resource type="Script" uid="uid://b10dmw55v6eri" path="res://scripts/vfx/world_environment_setup.gd" id="42_world_env"]
 
 [sub_resource type="Gradient" id="Gradient_beat"]
 offsets = PackedFloat32Array(0, 0.25, 0.5, 0.75, 1)
@@ -135,6 +137,7 @@ script = ExtResource("6_main")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = ExtResource("11_env")
+script = ExtResource("42_world_env")
 
 [node name="AtmosphereBeauty" type="Node" parent="."]
 script = ExtResource("33_beauty")
@@ -245,6 +248,9 @@ upgrade_choice_path = NodePath("../../UI/UpgradeChoice")
 game_over_path = NodePath("../../UI/GameOver")
 wave_spawner_path = NodePath("../Enemies/WaveSpawner")
 boss_scene = ExtResource("23_boss")
+
+[node name="LevelManager" type="Node" parent="World/StageManager"]
+script = ExtResource("41_level_mgr")
 
 [node name="Camera2D" parent="." instance=ExtResource("2_camera")]
 
