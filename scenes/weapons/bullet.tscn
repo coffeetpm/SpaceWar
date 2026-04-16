@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3 uid="uid://bullet001"]
+
+[ext_resource type="Script" path="res://scripts/weapons/bullet.gd" id="1_bullet"]
+[ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="2_mat"]
+[ext_resource type="Material" uid="uid://neon_sprite_mat" path="res://resources/materials/neon_sprite_material.tres" id="3_neon"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bullet"]
+size = Vector2(6, 2)
+
+[node name="Bullet" type="Area2D"]
+collision_layer = 2
+collision_mask = 4
+script = ExtResource("1_bullet")
+
+[node name="Trail" type="Line2D" parent="."]
+z_index = -2
+width = 8.0
+default_color = Color(0.32, 0.82, 1, 0.5)
+material = ExtResource("2_mat")
+begin_cap_mode = 1
+end_cap_mode = 1
+joint_mode = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_bullet")
+
+[node name="Visual" type="Node2D" parent="."]
+scale = Vector2(1.15, 1.15)
+
+[node name="Glow" type="Polygon2D" parent="Visual"]
+z_index = -1
+material = ExtResource("3_neon")
+color = Color(0.25, 0.7, 1.0, 0.5)
+polygon = PackedVector2Array(4.5, 0, 4.176, 2.25, 2.25, 4.176, 0, 4.5, -2.25, 4.176, -4.176, 2.25, -4.5, 0, -4.176, -2.25, -2.25, -4.176, 0, -4.5, 2.25, -4.176, 4.176, -2.25)
+
+[node name="Core" type="Polygon2D" parent="Visual"]
+z_index = 0
+scale = Vector2(1.22, 1.22)
+material = ExtResource("3_neon")
+color = Color(0.4, 0.95, 1.25, 0.95)
+polygon = PackedVector2Array(1.5, 0, 1.299, 0.75, 0.75, 1.299, 0, 1.5, -0.75, 1.299, -1.299, 0.75, -1.5, 0, -1.299, -0.75, -0.75, -1.299, 0, -1.5, 0.75, -1.299, 1.299, -0.75)
