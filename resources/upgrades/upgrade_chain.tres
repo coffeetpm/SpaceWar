@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/upgrades/upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"chain"
+display_name = "Chain"
+description = "Enables spreading energy synergies"
+max_stacks = 1
+effect_type = &"damage"
+effect_value = 0.0
+primary_force = "space"
+tags = Array[String](["warp"])

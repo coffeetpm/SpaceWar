@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3 uid="uid://signature_beam_moment"]
+
+[ext_resource type="Script" path="res://scripts/demo/signature_beam_moment.gd" id="1_script"]
+[ext_resource type="PackedScene" uid="uid://beam_weapon" path="res://scenes/weapons/beam.tscn" id="2_beam"]
+
+[node name="SignatureBeamMoment" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 1600.0
+offset_bottom = 1200.0
+color = Color(0.04, 0.05, 0.09, 1)
+
+[node name="Beam" parent="." instance=ExtResource("2_beam")]
+position = Vector2(576, 420)
+rotation = 1.5708

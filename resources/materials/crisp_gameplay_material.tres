@@ -1,0 +1,7 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://crisp_gameplay_mat"]
+
+[ext_resource type="Shader" path="res://resources/shaders/crisp_gameplay.gdshader" id="1_crisp"]
+
+[resource]
+shader = ExtResource("1_crisp")
+shader_parameter/crisp_scale = 0.84

@@ -1,0 +1,102 @@
+[gd_scene load_steps=12 format=3 uid="uid://refraction_core"]
+
+[ext_resource type="Script" path="res://scripts/boss/refraction_core.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/boss/boss_phase_controller.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/boss/attacks/boss_beam_sweep.gd" id="3_sweep"]
+[ext_resource type="Script" path="res://scripts/boss/telegraph_line.gd" id="4_telegraph"]
+[ext_resource type="Script" path="res://scripts/boss/attacks/boss_beam_reflection.gd" id="5_reflection"]
+[ext_resource type="Script" path="res://scripts/boss/attacks/boss_beam_grid.gd" id="6_grid"]
+[ext_resource type="Script" path="res://scripts/boss/attacks/boss_lock_shot.gd" id="8_lock"]
+[ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="7_add"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hitbox"]
+radius = 38.0
+
+[node name="RefractionCore" type="Node2D" groups=["boss"]]
+script = ExtResource("1_root")
+
+[node name="Hitbox" type="Area2D" parent="."]
+collision_layer = 4
+collision_mask = 2
+monitorable = true
+monitoring = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("CircleShape2D_hitbox")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Shell" type="Node2D" parent="Visual"]
+[node name="OuterRing" type="Line2D" parent="Visual/Shell"]
+width = 3.0
+default_color = Color(0.85, 0.75, 0.55, 0.7)
+material = ExtResource("7_add")
+points = PackedVector2Array(-42, 0, -30, -30, 0, -42, 30, -30, 42, 0, 30, 30, 0, 42, -30, 30, -42, 0)
+
+[node name="Core" type="Node2D" parent="Visual"]
+[node name="CorePoly" type="Polygon2D" parent="Visual/Core"]
+color = Color(1, 0.92, 0.75, 0.98)
+polygon = PackedVector2Array(0, -18, -18, 0, 0, 18, 18, 0)
+
+[node name="Halo" type="Node2D" parent="Visual"]
+[node name="HaloLine" type="Line2D" parent="Visual/Halo"]
+width = 2.0
+default_color = Color(0.9, 0.8, 0.6, 0.5)
+material = ExtResource("7_add")
+points = PackedVector2Array(-50, 0, 50, 0, 0, 0, 0, -50, 0, 50)
+
+[node name="BeamEmitters" type="Node2D" parent="."]
+
+[node name="SweepBeam" type="Node2D" parent="BeamEmitters"]
+script = ExtResource("3_sweep")
+beam_length = 420.0
+beam_width = 16.0
+telegraph_duration = 0.65
+sweep_angle_degrees = 110.0
+sweep_duration = 2.2
+start_angle_degrees = -55.0
+
+[node name="TelegraphLine" type="Node2D" parent="BeamEmitters/SweepBeam"]
+script = ExtResource("4_telegraph")
+length = 420.0
+width = 20.0
+telegraph_duration = 0.65
+
+[node name="ReflectionBeams" type="Node2D" parent="BeamEmitters"]
+script = ExtResource("5_reflection")
+beam_length = 380.0
+telegraph_duration = 0.5
+beam_duration = 1.4
+cross_angle_degrees = 55.0
+
+[node name="LockShot" type="Node2D" parent="BeamEmitters"]
+script = ExtResource("8_lock")
+beam_length = 380.0
+beam_width = 14.0
+telegraph_show_sec = 0.55
+lock_delay_after_telegraph = 0.15
+beam_duration = 0.38
+
+[node name="TelegraphLine" type="Node2D" parent="BeamEmitters/LockShot"]
+script = ExtResource("4_telegraph")
+length = 380.0
+width = 16.0
+telegraph_duration = 0.55
+
+[node name="GridBeams" type="Node2D" parent="BeamEmitters"]
+script = ExtResource("6_grid")
+grid_width = 320.0
+grid_height = 280.0
+beam_count_h = 4
+beam_count_v = 3
+telegraph_duration = 0.4
+beam_on_duration = 0.9
+
+[node name="PhaseController" type="Node" parent="."]
+script = ExtResource("2_phase")
+sweep_interval_phase1 = 3.6
+sweep_interval_phase2 = 3.0
+sweep_interval_phase3 = 2.6
+reflection_interval = 4.8
+lock_shot_interval = 4.2
+precision_grid_interval = 6.0

@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3 uid="uid://enemy_dasher"]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_dasher.gd" id="1_enemy"]
+[ext_resource type="Material" uid="uid://neon_enemy_r" path="res://resources/materials/neon_enemy_red.tres" id="2_neon"]
+[ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="3_add"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 9.0
+
+[node name="EnemyDasher" type="CharacterBody2D" groups=["enemy", "enemy_dasher"]]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_enemy")
+
+[node name="Visual" type="Node2D" parent="."]
+scale = Vector2(1.25, 1.25)
+
+[node name="Outline" type="Polygon2D" parent="Visual"]
+color = Color(0.22, 0.12, 0.05, 0.7)
+material = ExtResource("2_neon")
+polygon = PackedVector2Array(0, -6, -10, 0, -5, 6, 5, 6, 10, 0)
+
+[node name="Core" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.6, 0.25, 0.95)
+material = ExtResource("2_neon")
+polygon = PackedVector2Array(0, -3, -4, 0, 0, 3, 4, 0)
+
+[node name="OutlineLine" type="Line2D" parent="Visual"]
+width = 1.4
+default_color = Color(0.95, 0.5, 0.2, 0.85)
+material = ExtResource("3_add")
+points = PackedVector2Array(0, -6, -10, 0, -5, 6, 5, 6, 10, 0, 0, -6)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")

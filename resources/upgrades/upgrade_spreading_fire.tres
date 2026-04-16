@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/upgrades/upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"spreading_fire"
+display_name = "Spreading Fire"
+description = "Beam energy spreads to nearby targets"
+max_stacks = 1
+effect_type = &"synergy"
+effect_value = 0.0
+primary_force = "light"
+tags = Array[String](["echo", "warp"])
+synergy_trigger = "pierce_pulse"
+synergy_effect = "spreading_fire"
+require_source_tags = Array[String](["light"])
+require_upgrade_tags = Array[String](["warp"])

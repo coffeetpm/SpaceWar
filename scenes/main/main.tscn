@@ -1,0 +1,789 @@
+[gd_scene load_steps=49 format=3 uid="uid://dagekh8w11x47"]
+
+[ext_resource type="PackedScene" uid="uid://player001" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/vfx/game_camera.tscn" id="2_camera"]
+[ext_resource type="Script" uid="uid://c3itqcl3i0r0q" path="res://scripts/enemies/wave_spawner.gd" id="3_spawner"]
+[ext_resource type="Script" uid="uid://1w67eq1f6oc2" path="res://scripts/weapons/bullet_pool.gd" id="4_pool"]
+[ext_resource type="Script" uid="uid://dyvbhihyvqeqo" path="res://scripts/vfx/explosion_vfx.gd" id="5_explosion"]
+[ext_resource type="Script" uid="uid://cek0uw3mpnd5d" path="res://scripts/main/main.gd" id="6_main"]
+[ext_resource type="Script" uid="uid://cv1qiom5qykjo" path="res://scripts/vfx/hit_flash.gd" id="7_hitflash"]
+[ext_resource type="Script" uid="uid://dkimmf18fl0lf" path="res://scripts/upgrades/upgrade_choice_ui.gd" id="8_upgrade_ui"]
+[ext_resource type="Script" uid="uid://bhd0w2tw8h4mt" path="res://scripts/ui/game_hud.gd" id="9_hud"]
+[ext_resource type="Script" uid="uid://bxmkrp7sjqoxo" path="res://scripts/ui/run_end_menu.gd" id="10_runend"]
+[ext_resource type="Environment" path="res://resources/environment/neon_glow.tres" id="11_env"]
+[ext_resource type="Script" uid="uid://c2ukh7y75vwwe" path="res://scripts/stage_manager.gd" id="12_stage"]
+[ext_resource type="Material" path="res://resources/materials/background_noise_material.tres" id="13_bg_mat"]
+[ext_resource type="Script" uid="uid://di8fn5bn3dd06" path="res://scripts/vfx/hitstop.gd" id="14_hitstop"]
+[ext_resource type="Material" path="res://resources/materials/vignette_flash_material.tres" id="15_vignette"]
+[ext_resource type="Material" path="res://resources/materials/additive_material.tres" id="16_add"]
+[ext_resource type="Script" uid="uid://cbw42lkmemtd5" path="res://scripts/vfx/pressure_vignette.gd" id="17_pressure"]
+[ext_resource type="Material" path="res://resources/materials/pressure_vignette_material.tres" id="18_pressure_mat"]
+[ext_resource type="Script" uid="uid://cy5wglaie2ecn" path="res://scripts/vfx/dodge_feedback.gd" id="19_dodge"]
+[ext_resource type="Script" uid="uid://csmvugxeqo0jw" path="res://scripts/vfx/kill_drop_visual.gd" id="20_killdrops"]
+[ext_resource type="Script" uid="uid://b8ct1yn5qj7si" path="res://scripts/ui/weapon_select_ui.gd" id="21_weapon_select"]
+[ext_resource type="Script" uid="uid://cuk1qo7v5xamc" path="res://scripts/vfx/build_ignition_fx.gd" id="22_ignition"]
+[ext_resource type="PackedScene" path="res://scenes/boss/refraction_core.tscn" id="23_boss"]
+[ext_resource type="Script" uid="uid://cvrmf8pefqs2d" path="res://scripts/vfx/boss_clear_vfx.gd" id="24_boss_clear"]
+[ext_resource type="Script" uid="uid://di5f6lo7tc3ql" path="res://scripts/vfx/parallax_controller.gd" id="25_parallax"]
+[ext_resource type="Material" path="res://resources/materials/parallax_stars_material.tres" id="26_mat_stars"]
+[ext_resource type="Material" path="res://resources/materials/parallax_dust_material.tres" id="27_mat_dust"]
+[ext_resource type="Material" path="res://resources/materials/parallax_fog_material.tres" id="28_mat_fog"]
+[ext_resource type="Script" uid="uid://dq205sxur2krt" path="res://scripts/ui/boss_hud.gd" id="29_boss_hud"]
+[ext_resource type="Script" uid="uid://c8gi23qqrm7ic" path="res://scripts/vfx/theme_motif_controller.gd" id="30_motif"]
+[ext_resource type="Script" uid="uid://rxj3qnbnj528" path="res://scripts/vfx/muzzle_flash_vfx.gd" id="31_muzzle"]
+[ext_resource type="Script" uid="uid://cjfyfkeocaa0x" path="res://scripts/vfx/atmosphere_opacity_controller.gd" id="32_atmosphere"]
+[ext_resource type="Script" uid="uid://h2mn6cbgnn63" path="res://scripts/vfx/atmosphere_beauty.gd" id="33_beauty"]
+[ext_resource type="Script" uid="uid://ce17ib13n34v8" path="res://scripts/vfx/visual_rhythm_controller.gd" id="34_rhythm"]
+[ext_resource type="Script" uid="uid://b8nykev1o3hj2" path="res://scripts/vfx/weapon_light_controller.gd" id="35_light"]
+[ext_resource type="Script" uid="uid://bdery0ge15p4l" path="res://scripts/vfx/combo_tracker.gd" id="36_combo"]
+[ext_resource type="Script" uid="uid://crepfcxgcrhv2" path="res://scripts/vfx/evolution_feedback_controller.gd" id="37_evolution"]
+[ext_resource type="Script" uid="uid://jqelvwmvhu8r" path="res://scripts/vfx/temporal_echo_manager.gd" id="38_temporal"]
+[ext_resource type="Script" uid="uid://boajorg0v3a7p" path="res://scripts/vfx/activation_intro.gd" id="39_activation"]
+[ext_resource type="Script" uid="uid://crenccepgl7x" path="res://scripts/vfx/level_up_vfx.gd" id="40_levelup"]
+
+[sub_resource type="Gradient" id="Gradient_beat"]
+offsets = PackedFloat32Array(0, 0.25, 0.5, 0.75, 1)
+colors = PackedColorArray(1, 0.2, 0.5, 0.5, 1, 0.6, 0.2, 0.5, 0.3, 1, 0.5, 0.5, 0.2, 0.6, 1, 0.5, 0.7, 0.3, 1, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.05, 0.06, 0.1, 0.6)
+border_width_bottom = 1
+border_color = Color(0.22, 0.5, 0.85, 0.6)
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
+content_margin_left = 14.0
+content_margin_top = 14.0
+content_margin_right = 14.0
+content_margin_bottom = 14.0
+bg_color = Color(0.06, 0.06, 0.1, 0.82)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.55, 0.9, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+shadow_color = Color(0.15, 0.45, 0.85, 0.25)
+shadow_size = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
+bg_color = Color(0.1, 0.12, 0.18, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.4, 0.65, 0.5)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
+bg_color = Color(0.25, 0.6, 0.95, 0.9)
+corner_radius_top_left = 1
+corner_radius_top_right = 1
+corner_radius_bottom_right = 1
+corner_radius_bottom_left = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_boss_panel"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.04, 0.05, 0.08, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.75, 0.4, 0.8)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+shadow_color = Color(0.8, 0.6, 0.25, 0.2)
+shadow_size = 2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_boss_bar_bg"]
+bg_color = Color(0.12, 0.1, 0.08, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.4, 0.25, 0.6)
+corner_radius_top_left = 1
+corner_radius_top_right = 1
+corner_radius_bottom_right = 1
+corner_radius_bottom_left = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_boss_bar_fill"]
+bg_color = Color(0.95, 0.8, 0.4, 0.95)
+corner_radius_top_left = 1
+corner_radius_top_right = 1
+corner_radius_bottom_right = 1
+corner_radius_bottom_left = 1
+
+[node name="Main" type="Node2D"]
+script = ExtResource("6_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("11_env")
+
+[node name="AtmosphereBeauty" type="Node" parent="."]
+script = ExtResource("33_beauty")
+
+[node name="ParallaxController" type="Node" parent="."]
+script = ExtResource("25_parallax")
+
+[node name="ParallaxLayer" type="CanvasLayer" parent="ParallaxController"]
+layer = -200
+
+[node name="Stars" type="ColorRect" parent="ParallaxController/ParallaxLayer"]
+material = ExtResource("26_mat_stars")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 1200.0
+offset_bottom = 1000.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.06, 0.08, 0.12, 1)
+
+[node name="Dust" type="ColorRect" parent="ParallaxController/ParallaxLayer"]
+material = ExtResource("27_mat_dust")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 1200.0
+offset_bottom = 1000.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.05, 0.06, 0.1, 0.8)
+
+[node name="Fog" type="ColorRect" parent="ParallaxController/ParallaxLayer"]
+material = ExtResource("28_mat_fog")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -400.0
+offset_top = -400.0
+offset_right = 1200.0
+offset_bottom = 1000.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.04, 0.05, 0.09, 0.6)
+
+[node name="ThemeMotifController" type="Node" parent="."]
+script = ExtResource("30_motif")
+
+[node name="AtmosphereOpacityController" type="Node" parent="."]
+script = ExtResource("32_atmosphere")
+
+[node name="VisualRhythmController" type="Node" parent="."]
+script = ExtResource("34_rhythm")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Background" type="ColorRect" parent="World"]
+visible = false
+z_index = -100
+material = ExtResource("13_bg_mat")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -2000.0
+offset_top = -2000.0
+offset_right = 2000.0
+offset_bottom = 2000.0
+color = Color(0.05, 0.05, 0.08, 1)
+
+[node name="StarDust" type="CPUParticles2D" parent="World"]
+z_index = -99
+amount = 48
+lifetime = 7.0
+randomness = 0.5
+emission_shape = 2
+emission_sphere_radius = 1.0
+direction = Vector2(0, -0.3)
+spread = 180.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 3.0
+initial_velocity_max = 10.0
+scale_amount_min = 0.2
+scale_amount_max = 0.5
+color = Color(0.22, 0.22, 0.3, 0.22)
+
+[node name="BulletPool" type="Node2D" parent="World" groups=["bullet_pool"]]
+script = ExtResource("4_pool")
+
+[node name="Player" parent="World" instance=ExtResource("1_player")]
+position = Vector2(576, 324)
+
+[node name="Enemies" type="Node2D" parent="World"]
+
+[node name="WaveSpawner" type="Node2D" parent="World/Enemies"]
+script = ExtResource("3_spawner")
+
+[node name="StageManager" type="Node" parent="World"]
+script = ExtResource("12_stage")
+hud_path = NodePath("../../UI/HUD")
+upgrade_choice_path = NodePath("../../UI/UpgradeChoice")
+game_over_path = NodePath("../../UI/GameOver")
+wave_spawner_path = NodePath("../Enemies/WaveSpawner")
+boss_scene = ExtResource("23_boss")
+
+[node name="Camera2D" parent="." instance=ExtResource("2_camera")]
+
+[node name="VFX" type="Node2D" parent="."]
+script = ExtResource("5_explosion")
+
+[node name="MuzzleFlashVFX" type="Node2D" parent="."]
+script = ExtResource("31_muzzle")
+
+[node name="WeaponLightController" type="Node" parent="."]
+script = ExtResource("35_light")
+
+[node name="ComboTracker" type="Node" parent="."]
+script = ExtResource("36_combo")
+
+[node name="EvolutionFeedbackController" type="Node" parent="."]
+script = ExtResource("37_evolution")
+
+[node name="TemporalEchoManager" type="Node" parent="."]
+script = ExtResource("38_temporal")
+
+[node name="ActivationIntro" type="CanvasLayer" parent="."]
+layer = 100
+script = ExtResource("39_activation")
+
+[node name="LevelUpVFX" type="Node" parent="."]
+script = ExtResource("40_levelup")
+
+[node name="KillDrops" type="Node" parent="."]
+script = ExtResource("20_killdrops")
+
+[node name="KillSound" type="AudioStreamPlayer2D" parent="."]
+
+[node name="DodgeFeedback" type="Node" parent="."]
+script = ExtResource("19_dodge")
+
+[node name="DodgeSound" type="AudioStreamPlayer2D" parent="DodgeFeedback"]
+
+[node name="Hitstop" type="Node" parent="."]
+script = ExtResource("14_hitstop")
+
+[node name="BeatDust" type="CPUParticles2D" parent="."]
+z_index = 50
+material = ExtResource("16_add")
+amount = 6
+lifetime = 0.35
+explosiveness = 1.0
+direction = Vector2(0, -1)
+spread = 180.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 18.0
+initial_velocity_max = 42.0
+scale_amount_min = 0.15
+scale_amount_max = 0.32
+color = Color(0.55, 0.55, 0.7, 0.38)
+color_ramp = SubResource("Gradient_beat")
+
+[node name="PressureVignette" type="Node" parent="."]
+script = ExtResource("17_pressure")
+
+[node name="PressureLayer" type="CanvasLayer" parent="PressureVignette"]
+layer = 45
+
+[node name="ColorRect" type="ColorRect" parent="PressureVignette/PressureLayer"]
+material = ExtResource("18_pressure_mat")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="HitFlash" type="Node" parent="."]
+script = ExtResource("7_hitflash")
+
+[node name="FlashLayer" type="CanvasLayer" parent="HitFlash"]
+layer = 40
+
+[node name="FullScreenFlash" type="ColorRect" parent="HitFlash/FlashLayer"]
+material = ExtResource("15_vignette")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="BuildIgnitionFX" type="Node" parent="."]
+script = ExtResource("22_ignition")
+
+[node name="BossClearVFX" type="Node" parent="."]
+script = ExtResource("24_boss_clear")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="WeaponSelect" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("21_weapon_select")
+
+[node name="Panel" type="Panel" parent="UI/WeaponSelect"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -160.0
+offset_right = 180.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Title" type="Label" parent="UI/WeaponSelect/Panel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 32.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 22
+text = "Select reactor"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="WeaponList" type="VBoxContainer" parent="UI/WeaponSelect/Panel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 40.0
+offset_bottom = 260.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+
+[node name="StartButton" type="Button" parent="UI/WeaponSelect/Panel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -36.0
+offset_right = 100.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Launch"
+
+[node name="HUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("9_hud")
+
+[node name="TopBar" type="Panel" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -80.0
+offset_right = 80.0
+offset_bottom = 22.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_topbar")
+
+[node name="RunStatusLabel" type="Label" parent="UI/HUD/TopBar"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.5, 0.75, 1, 0.9)
+theme_override_font_sizes/font_size = 12
+text = "Burst 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HUDPanel" type="Panel" parent="UI/HUD"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -240.0
+offset_top = 28.0
+offset_right = -12.0
+offset_bottom = 168.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="TimerLabel" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 36.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "60s"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="WaveLabel" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 38.0
+offset_bottom = 54.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.45, 0.65, 0.85, 0.85)
+theme_override_font_sizes/font_size = 11
+text = "Wave 1"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HPBar" type="ProgressBar" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 58.0
+offset_bottom = 66.0
+grow_horizontal = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
+max_value = 1.0
+value = 1.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 68.0
+offset_bottom = 84.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.5, 0.75, 0.95, 0.95)
+theme_override_font_sizes/font_size = 12
+text = "HP 5 / 5"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="BuildIdentity" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 88.0
+offset_bottom = 104.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.4, 0.7, 0.95, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "—"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="EarnedLabel" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 108.0
+offset_bottom = 122.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.45, 0.65, 0.85, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "Earned: 0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TotalCurrencyLabel" type="Label" parent="UI/HUD/HUDPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 124.0
+offset_bottom = 140.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.45, 0.65, 0.85, 0.9)
+theme_override_font_sizes/font_size = 11
+text = "Total: 0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="RunCompleteLabel" type="Label" parent="UI/HUD"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -20.0
+offset_right = 120.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 28
+text = "Run Complete!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BossHUD" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("29_boss_hud")
+
+[node name="BossPanel" type="Panel" parent="UI/BossHUD"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 8.0
+offset_right = 220.0
+offset_bottom = 52.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_boss_panel")
+
+[node name="NameLabel" type="Label" parent="UI/BossHUD/BossPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 20.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.6, 1)
+theme_override_font_sizes/font_size = 18
+text = "Refraction Examiner"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthBar" type="ProgressBar" parent="UI/BossHUD/BossPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 24.0
+offset_bottom = 40.0
+grow_horizontal = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_boss_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_boss_bar_fill")
+max_value = 1.0
+value = 1.0
+show_percentage = false
+
+[node name="UpgradeChoice" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("8_upgrade_ui")
+
+[node name="ChoiceContainer" type="HBoxContainer" parent="UI/UpgradeChoice"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -50.0
+offset_right = 200.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GameOver" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("10_runend")
+
+[node name="Panel" type="Panel" parent="UI/GameOver"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -165.0
+offset_right = 180.0
+offset_bottom = 165.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -90.0
+offset_right = 80.0
+offset_bottom = -55.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 24
+text = "Run Over"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StagesClearedLabel" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -45.0
+offset_right = 120.0
+offset_bottom = -25.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Stages cleared: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CurrencyEarnedLabel" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -15.0
+offset_right = 120.0
+offset_bottom = 5.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Earned this run: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="UpgradesTakenLabel" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 5.0
+offset_right = 120.0
+offset_bottom = 28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 12
+text = "Upgrades: —"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TotalCurrencyLabel" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 30.0
+offset_right = 120.0
+offset_bottom = 52.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Total currency: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResonanceLabel" type="Label" parent="UI/GameOver/Panel"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 52.0
+offset_right = 120.0
+offset_bottom = 68.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 11
+text = "Resonance: —"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BuildLabel" type="Label" parent="UI/GameOver/Panel"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = 66.0
+offset_right = 120.0
+offset_bottom = 84.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 12
+text = "Build: —"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RestartLabel" type="Label" parent="UI/GameOver/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = 86.0
+offset_right = 100.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Press R to Restart"
+horizontal_alignment = 1
+vertical_alignment = 1

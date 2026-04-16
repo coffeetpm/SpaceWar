@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://bg_noise_mat"]
+
+[ext_resource type="Shader" path="res://resources/shaders/background_noise.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/noise_scale = 14.0
+shader_parameter/noise_strength = 0.1
+shader_parameter/time_scale = 0.12

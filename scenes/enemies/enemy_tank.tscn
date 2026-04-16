@@ -1,0 +1,54 @@
+[gd_scene load_steps=6 format=3 uid="uid://enemy_tank"]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_base.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/weapons/patterns/pattern_target_burst.gd" id="2_pattern"]
+[ext_resource type="Material" uid="uid://neon_enemy_b" path="res://resources/materials/neon_enemy_blue.tres" id="3_neon"]
+[ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="4_add"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
+radius = 14.0
+
+[node name="EnemyTank" type="CharacterBody2D" groups=["enemy", "enemy_tank"]]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_enemy")
+max_hp = 3
+move_speed = 56.0
+explosion_scale = 1.4
+currency_drop = 2
+
+[node name="Visual" type="Node2D" parent="."]
+scale = Vector2(1.38, 1.38)
+
+[node name="Aura" type="Polygon2D" parent="Visual"]
+z_index = -3
+color = Color(0.25, 0.3, 0.6, 0.22)
+material = ExtResource("3_neon")
+polygon = PackedVector2Array(0, -11.5, 5.75, -9.97, 5.75, 9.97, 0, 11.5, -5.75, 9.97, -5.75, -9.97)
+
+[node name="Outline" type="Polygon2D" parent="Visual"]
+color = Color(0.12, 0.14, 0.35, 0.7)
+material = ExtResource("3_neon")
+polygon = PackedVector2Array(0, -10, 5, -8.66, 5, 8.66, 0, 10, -5, 8.66, -5, -8.66)
+
+[node name="Core" type="Polygon2D" parent="Visual"]
+color = Color(0.5, 0.6, 1.2, 0.95)
+material = ExtResource("3_neon")
+polygon = PackedVector2Array(0, -4, 2, -3.46, 2, 3.46, 0, 4, -2, 3.46, -2, -3.46)
+
+[node name="OutlineLine" type="Line2D" parent="Visual"]
+width = 1.4
+default_color = Color(0.4, 0.5, 1.0, 0.85)
+material = ExtResource("4_add")
+points = PackedVector2Array(0, -10, 5, -8.66, 5, 8.66, 0, 10, -5, 8.66, -5, -8.66, 0, -10)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_enemy")
+
+[node name="Pattern" type="Node" parent="."]
+script = ExtResource("2_pattern")
+bullet_count = 7
+spread_degrees = 15.0
+bullet_speed = 160.0
+damage = 2
+is_player = false

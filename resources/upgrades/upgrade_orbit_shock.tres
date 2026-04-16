@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/upgrades/upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"orbit_shock"
+display_name = "Orbit Shock"
+description = "Sentinels discharge on contact"
+max_stacks = 1
+effect_type = &"synergy"
+effect_value = 0.0
+primary_force = "space"
+tags = Array[String](["orbit"])
+synergy_trigger = "orbit_tick"
+synergy_effect = "electric_burst"
+require_source_tags = Array[String](["space"])

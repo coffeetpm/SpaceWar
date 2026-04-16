@@ -1,0 +1,7 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://vignette_flash"]
+
+[ext_resource type="Shader" path="res://resources/shaders/vignette_flash.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/vignette_strength = 0.65

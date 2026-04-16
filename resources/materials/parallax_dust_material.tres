@@ -1,0 +1,8 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://parallax_dust"]
+
+[ext_resource type="Shader" path="res://resources/shaders/parallax_dust.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/scale = 6.0
+shader_parameter/time_scale = 0.04

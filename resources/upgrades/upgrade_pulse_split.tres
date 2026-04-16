@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/upgrades/upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"pulse_split"
+display_name = "Pulse Split"
+description = "Shockwave splits into side projectiles"
+max_stacks = 1
+effect_type = &"synergy"
+effect_value = 0.0
+primary_force = "light"
+tags = Array[String](["split"])
+synergy_trigger = "pulse_fired"
+synergy_effect = "shockwave_split"
+require_source_tags = Array[String](["time"])

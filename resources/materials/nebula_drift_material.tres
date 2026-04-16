@@ -1,0 +1,9 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://nebula_drift_mat"]
+
+[ext_resource type="Shader" path="res://resources/shaders/nebula_drift.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/drift_speed = 0.035
+shader_parameter/opacity = 0.2
+shader_parameter/scale = 1.4

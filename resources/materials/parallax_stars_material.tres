@@ -1,0 +1,8 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://parallax_stars"]
+
+[ext_resource type="Shader" path="res://resources/shaders/parallax_stars.gdshader" id="1_shader"]
+
+[resource]
+shader = ExtResource("1_shader")
+shader_parameter/star_density = 22.0
+shader_parameter/twinkle_speed = 0.4
