@@ -12,6 +12,8 @@ class_name WeaponBeam
 ## Refraction Duplication (meta): secondary beam at angle; visual + 50% damage. Readable, no clutter.
 const REFRACTION_ANGLE_RAD := 0.2
 const REFRACTION_ECHO_DAMAGE_SCALE := 0.5
+const ADDITIVE_MATERIAL := preload("res://resources/materials/additive_material.tres")
+const BEAM_IMPACT_VFX_SCRIPT := preload("res://scripts/vfx/beam_impact_vfx.gd")
 
 var _pulse_timer: float = 0.0
 var _telegraph_timer: float = 0.0
@@ -50,9 +52,8 @@ func _draw_beam_visual() -> void:
 		_line.default_color = ArtDirection.TIER2_BULLET_CORE_PLAYER
 		_line.add_point(Vector2.ZERO)
 		_line.add_point(Vector2(0, -length))
-		var mat := load("res://resources/materials/additive_material.tres") as Material
-		if mat:
-			_line.material = mat
+		if ADDITIVE_MATERIAL:
+    		_line.material = ADDITIVE_MATERIAL
 		add_child(_line)
 	_glow = get_node_or_null("Glow") as Line2D
 	if not _glow:
@@ -63,9 +64,8 @@ func _draw_beam_visual() -> void:
 		_glow.default_color = Color(ArtDirection.TIER2_BULLET_GLOW_PLAYER.r, ArtDirection.TIER2_BULLET_GLOW_PLAYER.g, ArtDirection.TIER2_BULLET_GLOW_PLAYER.b, 0.55)
 		_glow.add_point(Vector2.ZERO)
 		_glow.add_point(Vector2(0, -length))
-		var mat := load("res://resources/materials/additive_material.tres") as Material
-		if mat:
-			_glow.material = mat
+		if ADDITIVE_MATERIAL:
+    		_glow.material = ADDITIVE_MATERIAL
 		add_child(_glow)
 	# Lock-on telegraph: thin line, dim
 	_telegraph_line = Line2D.new()
@@ -74,9 +74,8 @@ func _draw_beam_visual() -> void:
 	_telegraph_line.default_color = Color(0.4, 0.85, 1.0, 0.35)
 	_telegraph_line.add_point(Vector2.ZERO)
 	_telegraph_line.add_point(Vector2(0, -length))
-	var tmat := load("res://resources/materials/additive_material.tres") as Material
-	if tmat:
-		_telegraph_line.material = tmat
+	if ADDITIVE_MATERIAL:
+    	_telegraph_line.material = ADDITIVE_MATERIAL
 	add_child(_telegraph_line)
 	_telegraph_glow = Line2D.new()
 	_telegraph_glow.name = "TelegraphGlow"
@@ -85,8 +84,8 @@ func _draw_beam_visual() -> void:
 	_telegraph_glow.default_color = Color(0.3, 0.7, 0.95, 0.2)
 	_telegraph_glow.add_point(Vector2.ZERO)
 	_telegraph_glow.add_point(Vector2(0, -length))
-	if tmat:
-		_telegraph_glow.material = tmat
+	if ADDITIVE_MATERIAL:
+    	_telegraph_glow.material = ADDITIVE_MATERIAL
 	add_child(_telegraph_glow)
 	_telegraph_line.visible = false
 	_telegraph_glow.visible = false
@@ -104,9 +103,8 @@ func _build_refraction() -> void:
 	r_line.default_color = Color(ArtDirection.TIER2_BULLET_CORE_PLAYER.r, ArtDirection.TIER2_BULLET_CORE_PLAYER.g, ArtDirection.TIER2_BULLET_CORE_PLAYER.b, 0.42)
 	r_line.add_point(Vector2.ZERO)
 	r_line.add_point(Vector2(0, -length))
-	var mat := load("res://resources/materials/additive_material.tres") as Material
-	if mat:
-		r_line.material = mat
+	if ADDITIVE_MATERIAL:
+    	r_line.material = ADDITIVE_MATERIAL
 	_refraction_visual.add_child(r_line)
 	var r_glow := Line2D.new()
 	r_glow.width = width * 1.0
@@ -114,8 +112,8 @@ func _build_refraction() -> void:
 	r_glow.default_color = Color(ArtDirection.TIER2_BULLET_GLOW_PLAYER.r, ArtDirection.TIER2_BULLET_GLOW_PLAYER.g, ArtDirection.TIER2_BULLET_GLOW_PLAYER.b, 0.28)
 	r_glow.add_point(Vector2.ZERO)
 	r_glow.add_point(Vector2(0, -length))
-	if mat:
-		r_glow.material = mat
+	if ADDITIVE_MATERIAL:
+    	r_glow.material = ADDITIVE_MATERIAL
 	_refraction_visual.add_child(r_glow)
 	_refraction_visual.visible = false
 	# Refraction area: same shape as beam, rotated
@@ -186,7 +184,7 @@ func _process(delta: float) -> void:
 		for area in _area.get_overlapping_areas():
 			_damage_boss_area(area, dmg)
 		if EventBus.has_signal("player_projectile_impact"):
-			var tip: Vector2 = global_position + global_transform * Vector2(0, -length)
+			var tip: Vector2 = global_transform * Vector2(0, -length)
 			EventBus.player_projectile_impact.emit(tip, dmg)
 	if not _refraction_damaged_this_pulse and _refraction_area:
 		_refraction_damaged_this_pulse = true
@@ -260,7 +258,7 @@ func set_damage(d: int) -> void:
 
 ## Signature moment: refraction trail (slice in space) + clean impact at beam tip. Technological, precise.
 func _spawn_signature_beam_moment() -> void:
-	var tip_global: Vector2 = global_position + global_transform * Vector2(0, -length)
+	var tip_global: Vector2 = global_transform * Vector2(0, -length)
 	var scene := get_tree().current_scene
 	if not scene:
 		return
@@ -273,9 +271,8 @@ func _spawn_signature_beam_moment() -> void:
 	trail.default_color = Color(0.35, 0.82, 1.0, 0.38)
 	trail.add_point(Vector2.ZERO)
 	trail.add_point(Vector2(0, -length))
-	var mat := load("res://resources/materials/additive_material.tres") as Material
-	if mat:
-		trail.material = mat
+	if ADDITIVE_MATERIAL:
+    	trail.material = ADDITIVE_MATERIAL
 	trail_node.add_child(trail)
 	scene.add_child(trail_node)
 	var t_trail := trail_node.create_tween()
@@ -283,7 +280,7 @@ func _spawn_signature_beam_moment() -> void:
 	t_trail.tween_callback(func() -> void: trail_node.queue_free())
 	# Clean energy fracture + light shards at tip
 	var impact := Node2D.new()
-	impact.set_script(load("res://scripts/vfx/beam_impact_vfx.gd") as GDScript)
+	impact.set_script(BEAM_IMPACT_VFX_SCRIPT)
 	impact.global_position = tip_global
 	scene.add_child(impact)
 

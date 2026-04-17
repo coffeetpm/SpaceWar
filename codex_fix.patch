@@ -1,0 +1,241 @@
+diff --git a/scripts/stage_manager.gd b/scripts/stage_manager.gd
+index 720b420..a1b26ea 100644
+--- a/scripts/stage_manager.gd
++++ b/scripts/stage_manager.gd
+@@ -55,13 +55,18 @@ var _is_level_up_choice: bool = false  # true when upgrade UI was shown due to l
+ ## 在 level-up 升級期間若波次清空事件觸發，延遲至升級完成後處理。避免 wave_cleared 被丟棄而卡關。
+ var _pending_wave_cleared_number: int = -1
+ 
+-var _hud: Control
+-var _upgrade_choice: Control
+-var _game_over: Control
+-var _system_lab: Control
+-var _wave_spawner: Node
+-var _save_manager: Node  # SaveManager autoload from /root/SaveManager
+-var _level_manager: LevelManager
++var _hud: Control
++var _upgrade_choice: Control
++var _game_over: Control
++var _system_lab: Control
++var _wave_spawner: Node
++var _hud_wave_label: Label
++var _hud_run_status_label: Label
++var _hud_timer_label: Label
++var _hud_exp_label: Label
++var _hud_total_currency_label: Label
++var _save_manager: Node  # SaveManager autoload from /root/SaveManager
++var _level_manager: LevelManager
+ ## 目前小關卡內波次（僅 wave loop 顯示／節奏用）。
+ var _current_wave_in_stage: int = 1
+ 
+@@ -104,8 +109,19 @@ func _resolve_refs() -> void:
+ 		_game_over = get_node_or_null(game_over_path) as Control
+ 	if system_lab_path.is_empty() == false:
+ 		_system_lab = get_node_or_null(system_lab_path) as Control
+-	if wave_spawner_path.is_empty() == false:
+-		_wave_spawner = get_node_or_null(wave_spawner_path)
++	if wave_spawner_path.is_empty() == false:
++		_wave_spawner = get_node_or_null(wave_spawner_path)
++	_cache_hud_nodes()
++
++
++func _cache_hud_nodes() -> void:
++	if not _hud or not is_instance_valid(_hud):
++		return
++	_hud_wave_label = _hud.get_node_or_null("HUDPanel/WaveLabel") as Label
++	_hud_run_status_label = _hud.get_node_or_null("TopBar/RunStatusLabel") as Label
++	_hud_timer_label = _hud.get_node_or_null("HUDPanel/TimerLabel") as Label
++	_hud_exp_label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
++	_hud_total_currency_label = _hud.get_node_or_null("HUDPanel/TotalCurrencyLabel") as Label
+ 
+ 
+ func _spawn_boss() -> void:
+@@ -269,38 +285,35 @@ func get_boss_phase() -> int:
+ 	return 3
+ 
+ 
+-func _update_hud() -> void:
+-	if _hud:
+-		var wl: Label = _hud.get_node_or_null("HUDPanel/WaveLabel") as Label
+-		if wl:
+-			if use_wave_loop and _level_manager:
+-				wl.text = "小關卡 %d · 波 %d/%d" % [burst_index, _current_wave_in_stage, _level_manager.waves_per_upgrade]
+-			else:
+-				wl.text = "Stage %d / Burst %d" % [burst_index, burst_index]
+-		var run_status: Label = _hud.get_node_or_null("TopBar/RunStatusLabel") as Label
+-		if run_status:
+-			if stage_state == State.BURST_END:
+-				run_status.text = "Stage cleared"
+-			elif _boss_instance and is_instance_valid(_boss_instance):
+-				run_status.text = "Boss!"
+-			elif use_wave_loop:
+-				run_status.text = "小關卡 %d" % burst_index
+-			else:
+-				run_status.text = "Stage %d" % burst_index
+-		var tl: Label = _hud.get_node_or_null("HUDPanel/TimerLabel") as Label
+-		if tl:
+-			if use_wave_loop and _level_manager:
+-				tl.text = "波次 %d/%d" % [_current_wave_in_stage, _level_manager.waves_per_upgrade]
+-			else:
+-				tl.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
+-	if _hud:
+-		var el: Label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
+-		if el:
+-			el.text = "EXP: %d" % run_currency
+-		var tcl: Label = _hud.get_node_or_null("HUDPanel/TotalCurrencyLabel") as Label
+-		if tcl and _save_manager and _save_manager.has_method("get_total_currency"):
+-			var name_key: String = SaveManager.CURRENCY_DISPLAY_NAME if SaveManager else "Energy Fragments"
+-			tcl.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
++func _update_hud() -> void:
++	if _hud:
++		if not is_instance_valid(_hud_wave_label):
++			_cache_hud_nodes()
++		if _hud_wave_label:
++			if use_wave_loop and _level_manager:
++				_hud_wave_label.text = "小關卡 %d · 波 %d/%d" % [burst_index, _current_wave_in_stage, _level_manager.waves_per_upgrade]
++			else:
++				_hud_wave_label.text = "Stage %d / Burst %d" % [burst_index, burst_index]
++		if _hud_run_status_label:
++			if stage_state == State.BURST_END:
++				_hud_run_status_label.text = "Stage cleared"
++			elif _boss_instance and is_instance_valid(_boss_instance):
++				_hud_run_status_label.text = "Boss!"
++			elif use_wave_loop:
++				_hud_run_status_label.text = "小關卡 %d" % burst_index
++			else:
++				_hud_run_status_label.text = "Stage %d" % burst_index
++		if _hud_timer_label:
++			if use_wave_loop and _level_manager:
++				_hud_timer_label.text = "波次 %d/%d" % [_current_wave_in_stage, _level_manager.waves_per_upgrade]
++			else:
++				_hud_timer_label.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
++	if _hud:
++		if _hud_exp_label:
++			_hud_exp_label.text = "EXP: %d" % run_currency
++		if _hud_total_currency_label and _save_manager and _save_manager.has_method("get_total_currency"):
++			var name_key: String = SaveManager.CURRENCY_DISPLAY_NAME if SaveManager else "Energy Fragments"
++			_hud_total_currency_label.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
+ 
+ 
+ func _start_spawner() -> void:
+diff --git a/scripts/weapons/beam.gd b/scripts/weapons/beam.gd
+index c21f1f6..04ed439 100644
+--- a/scripts/weapons/beam.gd
++++ b/scripts/weapons/beam.gd
+@@ -12,6 +12,8 @@ class_name WeaponBeam
+ ## Refraction Duplication (meta): secondary beam at angle; visual + 50% damage. Readable, no clutter.
+ const REFRACTION_ANGLE_RAD := 0.2
+ const REFRACTION_ECHO_DAMAGE_SCALE := 0.5
++const ADDITIVE_MATERIAL := preload("res://resources/materials/additive_material.tres")
++const BEAM_IMPACT_VFX_SCRIPT := preload("res://scripts/vfx/beam_impact_vfx.gd")
+ 
+ var _pulse_timer: float = 0.0
+ var _telegraph_timer: float = 0.0
+@@ -50,9 +52,8 @@ func _draw_beam_visual() -> void:
+ 		_line.default_color = ArtDirection.TIER2_BULLET_CORE_PLAYER
+ 		_line.add_point(Vector2.ZERO)
+ 		_line.add_point(Vector2(0, -length))
+-		var mat := load("res://resources/materials/additive_material.tres") as Material
+-		if mat:
+-			_line.material = mat
++		if ADDITIVE_MATERIAL:
++			_line.material = ADDITIVE_MATERIAL
+ 		add_child(_line)
+ 	_glow = get_node_or_null("Glow") as Line2D
+ 	if not _glow:
+@@ -63,9 +64,8 @@ func _draw_beam_visual() -> void:
+ 		_glow.default_color = Color(ArtDirection.TIER2_BULLET_GLOW_PLAYER.r, ArtDirection.TIER2_BULLET_GLOW_PLAYER.g, ArtDirection.TIER2_BULLET_GLOW_PLAYER.b, 0.55)
+ 		_glow.add_point(Vector2.ZERO)
+ 		_glow.add_point(Vector2(0, -length))
+-		var mat := load("res://resources/materials/additive_material.tres") as Material
+-		if mat:
+-			_glow.material = mat
++		if ADDITIVE_MATERIAL:
++			_glow.material = ADDITIVE_MATERIAL
+ 		add_child(_glow)
+ 	# Lock-on telegraph: thin line, dim
+ 	_telegraph_line = Line2D.new()
+@@ -74,9 +74,8 @@ func _draw_beam_visual() -> void:
+ 	_telegraph_line.default_color = Color(0.4, 0.85, 1.0, 0.35)
+ 	_telegraph_line.add_point(Vector2.ZERO)
+ 	_telegraph_line.add_point(Vector2(0, -length))
+-	var tmat := load("res://resources/materials/additive_material.tres") as Material
+-	if tmat:
+-		_telegraph_line.material = tmat
++	if ADDITIVE_MATERIAL:
++		_telegraph_line.material = ADDITIVE_MATERIAL
+ 	add_child(_telegraph_line)
+ 	_telegraph_glow = Line2D.new()
+ 	_telegraph_glow.name = "TelegraphGlow"
+@@ -85,8 +84,8 @@ func _draw_beam_visual() -> void:
+ 	_telegraph_glow.default_color = Color(0.3, 0.7, 0.95, 0.2)
+ 	_telegraph_glow.add_point(Vector2.ZERO)
+ 	_telegraph_glow.add_point(Vector2(0, -length))
+-	if tmat:
+-		_telegraph_glow.material = tmat
++	if ADDITIVE_MATERIAL:
++		_telegraph_glow.material = ADDITIVE_MATERIAL
+ 	add_child(_telegraph_glow)
+ 	_telegraph_line.visible = false
+ 	_telegraph_glow.visible = false
+@@ -104,9 +103,8 @@ func _build_refraction() -> void:
+ 	r_line.default_color = Color(ArtDirection.TIER2_BULLET_CORE_PLAYER.r, ArtDirection.TIER2_BULLET_CORE_PLAYER.g, ArtDirection.TIER2_BULLET_CORE_PLAYER.b, 0.42)
+ 	r_line.add_point(Vector2.ZERO)
+ 	r_line.add_point(Vector2(0, -length))
+-	var mat := load("res://resources/materials/additive_material.tres") as Material
+-	if mat:
+-		r_line.material = mat
++	if ADDITIVE_MATERIAL:
++		r_line.material = ADDITIVE_MATERIAL
+ 	_refraction_visual.add_child(r_line)
+ 	var r_glow := Line2D.new()
+ 	r_glow.width = width * 1.0
+@@ -114,8 +112,8 @@ func _build_refraction() -> void:
+ 	r_glow.default_color = Color(ArtDirection.TIER2_BULLET_GLOW_PLAYER.r, ArtDirection.TIER2_BULLET_GLOW_PLAYER.g, ArtDirection.TIER2_BULLET_GLOW_PLAYER.b, 0.28)
+ 	r_glow.add_point(Vector2.ZERO)
+ 	r_glow.add_point(Vector2(0, -length))
+-	if mat:
+-		r_glow.material = mat
++	if ADDITIVE_MATERIAL:
++		r_glow.material = ADDITIVE_MATERIAL
+ 	_refraction_visual.add_child(r_glow)
+ 	_refraction_visual.visible = false
+ 	# Refraction area: same shape as beam, rotated
+@@ -186,7 +184,7 @@ func _process(delta: float) -> void:
+ 		for area in _area.get_overlapping_areas():
+ 			_damage_boss_area(area, dmg)
+ 		if EventBus.has_signal("player_projectile_impact"):
+-			var tip: Vector2 = global_position + global_transform * Vector2(0, -length)
++			var tip: Vector2 = global_transform * Vector2(0, -length)
+ 			EventBus.player_projectile_impact.emit(tip, dmg)
+ 	if not _refraction_damaged_this_pulse and _refraction_area:
+ 		_refraction_damaged_this_pulse = true
+@@ -260,7 +258,7 @@ func set_damage(d: int) -> void:
+ 
+ ## Signature moment: refraction trail (slice in space) + clean impact at beam tip. Technological, precise.
+ func _spawn_signature_beam_moment() -> void:
+-	var tip_global: Vector2 = global_position + global_transform * Vector2(0, -length)
++	var tip_global: Vector2 = global_transform * Vector2(0, -length)
+ 	var scene := get_tree().current_scene
+ 	if not scene:
+ 		return
+@@ -273,9 +271,8 @@ func _spawn_signature_beam_moment() -> void:
+ 	trail.default_color = Color(0.35, 0.82, 1.0, 0.38)
+ 	trail.add_point(Vector2.ZERO)
+ 	trail.add_point(Vector2(0, -length))
+-	var mat := load("res://resources/materials/additive_material.tres") as Material
+-	if mat:
+-		trail.material = mat
++	if ADDITIVE_MATERIAL:
++		trail.material = ADDITIVE_MATERIAL
+ 	trail_node.add_child(trail)
+ 	scene.add_child(trail_node)
+ 	var t_trail := trail_node.create_tween()
+@@ -283,7 +280,7 @@ func _spawn_signature_beam_moment() -> void:
+ 	t_trail.tween_callback(func() -> void: trail_node.queue_free())
+ 	# Clean energy fracture + light shards at tip
+ 	var impact := Node2D.new()
+-	impact.set_script(load("res://scripts/vfx/beam_impact_vfx.gd") as GDScript)
++	impact.set_script(BEAM_IMPACT_VFX_SCRIPT)
+ 	impact.global_position = tip_global
+ 	scene.add_child(impact)

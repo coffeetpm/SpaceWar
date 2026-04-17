@@ -60,6 +60,11 @@ var _upgrade_choice: Control
 var _game_over: Control
 var _system_lab: Control
 var _wave_spawner: Node
+var _hud_wave_label: Label
+var _hud_run_status_label: Label
+var _hud_timer_label: Label
+var _hud_exp_label: Label
+var _hud_total_currency_label: Label
 var _save_manager: Node  # SaveManager autoload from /root/SaveManager
 var _level_manager: LevelManager
 ## 目前小關卡內波次（僅 wave loop 顯示／節奏用）。
@@ -69,6 +74,7 @@ var _current_wave_in_stage: int = 1
 func _ready() -> void:
 	_save_manager = get_node_or_null("/root/SaveManager")
 	_resolve_refs()
+	_cache_hud_nodes()
 	_resolve_level_manager()
 	EventBus.wave_cleared.connect(_on_event_bus_wave_cleared)
 	EventBus.player_died.connect(_on_player_died)
@@ -106,7 +112,16 @@ func _resolve_refs() -> void:
 		_system_lab = get_node_or_null(system_lab_path) as Control
 	if wave_spawner_path.is_empty() == false:
 		_wave_spawner = get_node_or_null(wave_spawner_path)
+	_cache_hud_nodes()
 
+func _cache_hud_nodes() -> void:
+	if not _hud or not is_instance_valid(_hud):
+		return
+	_hud_wave_label = _hud.get_node_or_null("HUDPanel/WaveLabel") as Label
+	_hud_run_status_label = _hud.get_node_or_null("TopBar/RunStatusLabel") as Label
+	_hud_timer_label = _hud.get_node_or_null("HUDPanel/TimerLabel") as Label
+	_hud_exp_label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
+	_hud_total_currency_label = _hud.get_node_or_null("HUDPanel/TotalCurrencyLabel") as Label
 
 func _spawn_boss() -> void:
 	if not boss_scene:
@@ -271,60 +286,55 @@ func get_boss_phase() -> int:
 
 func _update_hud() -> void:
 	if _hud:
-		var wl: Label = _hud.get_node_or_null("HUDPanel/WaveLabel") as Label
-		if wl:
+		if not is_instance_valid(_hud_wave_label):
+			_cache_hud_nodes()
+		if _hud_wave_label:
 			if use_wave_loop and _level_manager:
-				wl.text = "小關卡 %d · 波 %d/%d" % [burst_index, _current_wave_in_stage, _level_manager.waves_per_upgrade]
+				_hud_wave_label.text = "小關卡 %d · 波 %d/%d" % [burst_index, _current_wave_in_stage, _level_manager.waves_per_upgrade]
 			else:
-				wl.text = "Stage %d / Burst %d" % [burst_index, burst_index]
-		var run_status: Label = _hud.get_node_or_null("TopBar/RunStatusLabel") as Label
-		if run_status:
+				_hud_wave_label.text = "Stage %d / Burst %d" % [burst_index, burst_index]
+		if _hud_run_status_label:
 			if stage_state == State.BURST_END:
-				run_status.text = "Stage cleared"
+				_hud_run_status_label.text = "Stage cleared"
 			elif _boss_instance and is_instance_valid(_boss_instance):
-				run_status.text = "Boss!"
+				_hud_run_status_label.text = "Boss!"
 			elif use_wave_loop:
-				run_status.text = "小關卡 %d" % burst_index
+				_hud_run_status_label.text = "小關卡 %d" % burst_index
 			else:
-				run_status.text = "Stage %d" % burst_index
-		var tl: Label = _hud.get_node_or_null("HUDPanel/TimerLabel") as Label
-		if tl:
+				_hud_run_status_label.text = "Stage %d" % burst_index
+		if _hud_timer_label:
 			if use_wave_loop and _level_manager:
-				tl.text = "波次 %d/%d" % [_current_wave_in_stage, _level_manager.waves_per_upgrade]
+				_hud_timer_label.text = "波次 %d/%d" % [_current_wave_in_stage, _level_manager.waves_per_upgrade]
 			else:
-				tl.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
+				_hud_timer_label.text = "%ds" % maxi(0, int(ceilf(burst_timer)))
 	if _hud:
-		var el: Label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
-		if el:
-			el.text = "EXP: %d" % run_currency
-		var tcl: Label = _hud.get_node_or_null("HUDPanel/TotalCurrencyLabel") as Label
-		if tcl and _save_manager and _save_manager.has_method("get_total_currency"):
+		if _hud_exp_label:
+			_hud_exp_label.text = "EXP: %d" % run_currency
+		if _hud_total_currency_label and _save_manager and _save_manager.has_method("get_total_currency"):
 			var name_key: String = SaveManager.CURRENCY_DISPLAY_NAME if SaveManager else "Energy Fragments"
-			tcl.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
-
-
-func _start_spawner() -> void:
-	if use_wave_loop and _level_manager:
-		var is_boss: bool = _level_manager.is_boss_mini_stage(burst_index)
-		if is_boss:
-			_stop_spawner()
-			if boss_scene and not _boss_instance:
-				_spawn_boss()
+				_hud_total_currency_label.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
+	func _start_spawner() -> void:
+		if use_wave_loop and _level_manager:
+			var is_boss: bool = _level_manager.is_boss_mini_stage(burst_index)
+			if is_boss:
+				_stop_spawner()
+				if boss_scene and not _boss_instance:
+					_spawn_boss()
+				return
+			_remove_boss()
+			_current_wave_in_stage = 1
+			if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
+				_wave_spawner.start_rogu_wave(burst_index, _current_wave_in_stage)
 			return
-		_remove_boss()
-		_current_wave_in_stage = 1
-		if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
-			_wave_spawner.start_rogu_wave(burst_index, _current_wave_in_stage)
-		return
-	var is_boss: bool = _is_boss_burst(burst_index)
-	if _wave_spawner and _wave_spawner.has_method("start_burst"):
-		_wave_spawner.start_burst(burst_index, run_duration, is_boss)
-		_set_spawner_burst_time()
-	elif _wave_spawner and _wave_spawner.has_method("start_stage"):
-		_wave_spawner.start_stage(burst_index, run_duration)
-		_set_spawner_burst_time()
-	if is_boss and boss_scene and not _boss_instance:
-		_spawn_boss()
+		var is_boss: bool = _is_boss_burst(burst_index)
+		if _wave_spawner and _wave_spawner.has_method("start_burst"):
+			_wave_spawner.start_burst(burst_index, run_duration, is_boss)
+			_set_spawner_burst_time()
+		elif _wave_spawner and _wave_spawner.has_method("start_stage"):
+			_wave_spawner.start_stage(burst_index, run_duration)
+			_set_spawner_burst_time()
+		if is_boss and boss_scene and not _boss_instance:
+			_spawn_boss()
 
 
 func _on_event_bus_wave_cleared(wave_number: int) -> void:
