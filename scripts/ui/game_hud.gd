@@ -120,13 +120,18 @@ func _build_exp_ui() -> void:
 	_exp_bar.value = 0.0
 	_exp_bar.show_percentage = false
 	var style_bg := StyleBoxFlat.new()
-	style_bg.bg_color = Color(0.12, 0.2, 0.28, 0.9)
+	style_bg.bg_color = Color(0.05, 0.09, 0.14, 0.96)
 	style_bg.corner_radius_top_left = 2
 	style_bg.corner_radius_top_right = 2
 	style_bg.corner_radius_bottom_right = 2
 	style_bg.corner_radius_bottom_left = 2
+	style_bg.border_width_left = 1
+	style_bg.border_width_top = 1
+	style_bg.border_width_right = 1
+	style_bg.border_width_bottom = 1
+	style_bg.border_color = Color(0.28, 0.55, 0.8, 0.68)
 	var style_fill := StyleBoxFlat.new()
-	style_fill.bg_color = Color(0.35, 0.75, 0.95, 0.95)
+	style_fill.bg_color = Color(0.34, 0.78, 1.0, 0.98)
 	style_fill.corner_radius_top_left = 2
 	style_fill.corner_radius_top_right = 2
 	style_fill.corner_radius_bottom_right = 2
@@ -141,7 +146,7 @@ func _build_exp_ui() -> void:
 	_exp_level_label.offset_top = 94.0
 	_exp_level_label.offset_bottom = 108.0
 	_exp_level_label.add_theme_font_size_override("font_size", 11)
-	_exp_level_label.add_theme_color_override("font_color", Color(0.4, 0.7, 0.95, 0.95))
+	_exp_level_label.add_theme_color_override("font_color", Color(0.72, 0.88, 1.0, 0.98))
 	_exp_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_exp_level_label.text = "Lv.1  EXP 0/10"
 	_hud_panel.add_child(_exp_level_label)
@@ -153,7 +158,7 @@ func _build_exp_ui() -> void:
 	_exp_pop_label.offset_top = 80.0
 	_exp_pop_label.offset_bottom = 88.0
 	_exp_pop_label.add_theme_font_size_override("font_size", 11)
-	_exp_pop_label.add_theme_color_override("font_color", Color(0.5, 0.85, 1.0, 0.95))
+	_exp_pop_label.add_theme_color_override("font_color", Color(0.82, 0.94, 1.0, 0.98))
 	_exp_pop_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_exp_pop_label.text = "+0"
 	_hud_panel.add_child(_exp_pop_label)

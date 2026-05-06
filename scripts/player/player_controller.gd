@@ -12,6 +12,11 @@ const FRICTION := 1380.0
 var MAX_SPEED := 420.0
 var _speed_bonus: float = 0.0
 
+const DASH_SPEED := 1120.0
+const DASH_DURATION := 0.14
+const DASH_COOLDOWN := 0.82
+const DASH_TRAIL_BONUS := 10
+
 @export var max_hp: int = 5
 @export var invulnerability_duration: float = 1.2
 @export var hitbox_scale: float = 0.7
@@ -28,6 +33,10 @@ var current_hp: int:
 			_die()
 
 var _invulnerable_until: float = 0.0
+var _dash_until: float = 0.0
+var _dash_cooldown_until: float = 0.0
+var _dash_direction: Vector2 = Vector2.UP
+var _last_move_dir: Vector2 = Vector2.UP
 var _weapon: Node2D
 
 @onready var hitbox: CollisionShape2D = $Hitbox/CollisionShape2D
@@ -68,7 +77,7 @@ func _spawn_neon_wings() -> void:
 	wings.glow_padding = 12.0
 	wings.anchor_offset = Vector2(0, 12)
 	## HDR 青藍霓虹；G/B > 1.0 驅動 Bloom
-	wings.neon_color = Color(0.38, 2.30, 3.10, 1.0)
+	wings.neon_color = Color(0.28, 2.55, 3.35, 1.0)
 	wings.pulse_speed = 3.0
 	wings.pulse_strength = 0.32
 	wings.core_brightness = 2.4
@@ -98,7 +107,8 @@ func _update_trail() -> void:
 	if not _trail:
 		return
 	_trail_points.append(position)
-	while _trail_points.size() > TRAIL_LENGTH:
+	var max_trail := TRAIL_LENGTH + (DASH_TRAIL_BONUS if _is_dashing() else 0)
+	while _trail_points.size() > max_trail:
 		_trail_points.remove_at(0)
 	_trail.clear_points()
 	for p in _trail_points:
@@ -192,6 +202,16 @@ func _physics_process(delta: float) -> void:
 		return
 	var input_dir := Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")
 	if input_dir != Vector2.ZERO:
+		_last_move_dir = input_dir.normalized()
+	if Input.is_action_just_pressed(&"dash"):
+		_try_dash(input_dir)
+	if _is_dashing():
+		velocity = _dash_direction * (DASH_SPEED + _speed_bonus * 0.55)
+		move_and_slide()
+		_update_trail()
+		_update_lean(delta)
+		return
+	if input_dir != Vector2.ZERO:
 		velocity = velocity.move_toward(input_dir * (MAX_SPEED + _speed_bonus), ACCELERATION * delta)
 	else:
 		velocity = velocity.move_toward(Vector2.ZERO, FRICTION * delta)
@@ -222,6 +242,28 @@ func take_damage(amount: int, _source: Node = null) -> void:
 
 func _is_invulnerable() -> bool:
 	return Time.get_ticks_msec() / 1000.0 < _invulnerable_until
+
+
+func _is_dashing() -> bool:
+	return Time.get_ticks_msec() / 1000.0 < _dash_until
+
+
+func _try_dash(input_dir: Vector2) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _dash_cooldown_until:
+		return
+	_dash_direction = input_dir.normalized() if input_dir != Vector2.ZERO else _last_move_dir
+	if _dash_direction == Vector2.ZERO:
+		_dash_direction = Vector2.UP
+	_dash_until = now + DASH_DURATION
+	_dash_cooldown_until = now + DASH_COOLDOWN
+	_invulnerable_until = maxf(_invulnerable_until, _dash_until + 0.08)
+	EventBus.screen_shake_requested.emit(0.22, 0.10)
+	EventBus.time_scale_dip_requested.emit(0.045, 0.65)
+	if EventBus.has_signal("near_dodge_feedback"):
+		EventBus.near_dodge_feedback.emit()
+	if sprite:
+		EventBus.hit_flash_requested.emit(sprite, 0.055)
 
 
 func _die() -> void:

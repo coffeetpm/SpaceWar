@@ -49,11 +49,14 @@ class_name ShipVisualController
 var _thruster_poly: Polygon2D
 var _gpu_thruster: GPUParticles2D
 var _outline_node: CanvasItem
+var _outline_poly: Polygon2D
 var _outline_mat: ShaderMaterial
 var _mount_left: Node2D
 var _mount_right: Node2D
 var _mount_nose: Node2D
 var _player_body: CharacterBody2D
+var _evolution_root: Node2D
+var _orbit_sentinels: Array[Node2D] = []
 
 # 內部狀態
 var _current_roll: float  = 0.0
@@ -65,10 +68,13 @@ var _dodge_brighten_until: float = 0.0
 var _cannon_spawned: bool = false
 var _fin_spawned:    bool = false
 var _shield_spawned: bool = false
+var _visual_level:   int  = 1
 
 const BEAT_PULSE_DURATION  := 0.12
 const SHOT_PULSE_DURATION  := 0.07
 const DODGE_BRIGHTEN_DURATION := 0.2
+const ORBIT_SENTINEL_COUNT := 3
+const ORBIT_SENTINEL_RADIUS := 22.0
 
 
 func _ready() -> void:
@@ -78,6 +84,7 @@ func _ready() -> void:
 	_thruster_poly = get_node_or_null(thruster_path) as Polygon2D
 	_gpu_thruster  = get_node_or_null(gpu_thruster_path) as GPUParticles2D
 	_outline_node  = get_node_or_null(outline_node_path) as CanvasItem
+	_outline_poly  = _outline_node as Polygon2D
 	_mount_left    = get_node_or_null(mount_left_path)   as Node2D
 	_mount_right   = get_node_or_null(mount_right_path)  as Node2D
 	_mount_nose    = get_node_or_null(mount_nose_path)   as Node2D
@@ -97,9 +104,13 @@ func _ready() -> void:
 		EventBus.bullet_spawn_requested.connect(_on_shot)
 	## 升級觸發模組零件
 	EventBus.upgrade_picked.connect(_on_upgrade_picked)
+	EventBus.level_up.connect(_on_level_up)
 	EventBus.upgrade_effect_damage.connect(_check_cannon_unlock)
 	EventBus.upgrade_effect_move_speed.connect(_check_fin_unlock)
 	EventBus.upgrade_effect_max_hp.connect(_check_shield_unlock)
+	_ensure_evolution_root()
+	_apply_streamlined_outline()
+	_refresh_visual_progression()
 
 
 func _process(delta: float) -> void:
@@ -111,6 +122,7 @@ func _process(delta: float) -> void:
 	_update_thruster(_current_speed_factor)
 	_update_outline(_current_speed_factor)
 	_update_cockpit_pulse()
+	_update_orbit_sentinels(delta)
 
 
 # ── Roll 傾斜 ─────────────────────────────────────────────
@@ -181,10 +193,7 @@ func flash_hit(duration: float = 0.1) -> void:
 		return
 	_outline_mat.set_shader_parameter("flash_modifier", 1.0)
 	var t := create_tween()
-	t.tween_method(func(v: float) -> void:
-		if is_instance_valid(self) and _outline_mat:
-			_outline_mat.set_shader_parameter("flash_modifier", v)
-	, 1.0, 0.0, duration)
+	t.tween_method(Callable(self, "_set_outline_flash_modifier_safe"), 1.0, 0.0, duration)
 
 
 # ── Cockpit / Pulse ───────────────────────────────────────
@@ -214,6 +223,21 @@ func _apply_art_direction_colors() -> void:
 	if body_outline:  body_outline.default_color = Color(0.45, 0.85, 1.2, 0.9)
 	var old_parts: CPUParticles2D = get_node_or_null("ThrusterParticles") as CPUParticles2D
 	if old_parts:     old_parts.color = ArtDirection.PARTICLE_THRUSTER
+
+
+func _apply_streamlined_outline() -> void:
+	if not _outline_poly:
+		return
+	_outline_poly.polygon = PackedVector2Array([
+		Vector2(0, -22),
+		Vector2(-12, -6),
+		Vector2(-15, 10),
+		Vector2(-7, 22),
+		Vector2(0, 18),
+		Vector2(7, 22),
+		Vector2(15, 10),
+		Vector2(12, -6),
+	])
 
 
 # ── 模組化零件 ─────────────────────────────────────────────
@@ -264,9 +288,17 @@ func _show_mount_enter_effect(mp: Node2D) -> void:
 	if _outline_mat:
 		_outline_mat.set_shader_parameter("flash_modifier", 0.7)
 		var ft := create_tween()
-		ft.tween_method(func(v: float) -> void:
-			if _outline_mat: _outline_mat.set_shader_parameter("flash_modifier", v)
-		, 0.7, 0.0, 0.25)
+		ft.tween_method(Callable(self, "_set_outline_flash_modifier_if_present"), 0.7, 0.0, 0.25)
+
+
+func _set_outline_flash_modifier_safe(v: float) -> void:
+	if is_instance_valid(self) and _outline_mat:
+		_outline_mat.set_shader_parameter("flash_modifier", v)
+
+
+func _set_outline_flash_modifier_if_present(v: float) -> void:
+	if _outline_mat:
+		_outline_mat.set_shader_parameter("flash_modifier", v)
 
 
 # ── 程序化零件生成 ─────────────────────────────────────────
@@ -391,6 +423,48 @@ func _build_shield_part() -> Node2D:
 	return root
 
 
+func _build_orbit_sentinel(index: int) -> Node2D:
+	var root := Node2D.new()
+	root.name = "OrbitSentinel%d" % index
+	var mat: Material = null
+	if ResourceLoader.exists("res://resources/materials/additive_material.tres"):
+		mat = load("res://resources/materials/additive_material.tres") as Material
+
+	var chassis := Polygon2D.new()
+	chassis.polygon = PackedVector2Array([
+		Vector2(0, -7),
+		Vector2(5, -1),
+		Vector2(3, 6),
+		Vector2(-3, 6),
+		Vector2(-5, -1),
+	])
+	chassis.color = Color(0.20, 0.74, 1.10, 0.95)
+	if mat:
+		chassis.material = mat
+	root.add_child(chassis)
+
+	var core := Polygon2D.new()
+	core.polygon = _hex_pts(3.0)
+	core.position = Vector2(0, -1)
+	core.color = Color(0.95, 1.75, 2.50, 0.82)
+	if mat:
+		core.material = mat
+	root.add_child(core)
+
+	var rails := Line2D.new()
+	rails.points = PackedVector2Array([
+		Vector2(-4, 3),
+		Vector2(0, -5),
+		Vector2(4, 3),
+	])
+	rails.width = 1.5
+	rails.default_color = Color(0.45, 1.05, 1.70, 0.90)
+	if mat:
+		rails.material = mat
+	root.add_child(rails)
+	return root
+
+
 func _hex_pts(r: float) -> Array:
 	var pts: Array = []
 	for i in 6:
@@ -403,7 +477,72 @@ func _hex_pts(r: float) -> Array:
 
 func _on_upgrade_picked() -> void:
 	## upgrade_picked 發出後，各 effect signal 已處理完；此處做通用刷新
-	pass
+	_refresh_visual_progression()
+
+
+func _on_level_up(level: int) -> void:
+	_visual_level = maxi(_visual_level, level)
+	_refresh_visual_progression(level)
+
+
+func _refresh_visual_progression(level_override: int = -1) -> void:
+	var level_now: int = level_override if level_override > 0 else _resolve_player_level()
+	_visual_level = maxi(_visual_level, level_now)
+	var fighter := get_node_or_null("Fighter")
+	if fighter and fighter.has_method("set_visual_tier"):
+		var tier := 1
+		if _visual_level >= 6:
+			tier = 4
+		elif _visual_level >= 4:
+			tier = 3
+		elif _visual_level >= 2:
+			tier = 2
+		fighter.call("set_visual_tier", tier)
+	_update_orbit_sentinel_state()
+
+
+func _resolve_player_level() -> int:
+	if _player_body and "level" in _player_body:
+		return int(_player_body.level)
+	return 1
+
+
+func _ensure_evolution_root() -> void:
+	if _evolution_root and is_instance_valid(_evolution_root):
+		return
+	_evolution_root = Node2D.new()
+	_evolution_root.name = "EvolutionDecor"
+	add_child(_evolution_root)
+
+
+func _update_orbit_sentinel_state() -> void:
+	_ensure_evolution_root()
+	var wanted: int = ORBIT_SENTINEL_COUNT if _visual_level >= 4 else 0
+	while _orbit_sentinels.size() > wanted:
+		var n: Node2D = _orbit_sentinels.pop_back()
+		if is_instance_valid(n):
+			n.queue_free()
+	while _orbit_sentinels.size() < wanted:
+		var sentinel: Node2D = _build_orbit_sentinel(_orbit_sentinels.size())
+		sentinel.scale = Vector2.ZERO
+		_evolution_root.add_child(sentinel)
+		_orbit_sentinels.append(sentinel)
+		var t: Tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		t.tween_property(sentinel, "scale", Vector2.ONE, 0.28)
+
+
+func _update_orbit_sentinels(_delta: float) -> void:
+	if _orbit_sentinels.is_empty():
+		return
+	var t: float = Time.get_ticks_msec() * 0.001
+	for i in _orbit_sentinels.size():
+		var node: Node2D = _orbit_sentinels[i]
+		if not is_instance_valid(node):
+			continue
+		var ang: float = t * (1.25 + 0.08 * i) + TAU * float(i) / float(_orbit_sentinels.size())
+		var radius: float = ORBIT_SENTINEL_RADIUS + sin(t * 1.9 + float(i)) * 2.0
+		node.position = Vector2(cos(ang), sin(ang) * 0.55) * radius
+		node.rotation = ang + PI * 0.5
 
 
 func _check_cannon_unlock(_val: int) -> void:

@@ -214,9 +214,11 @@ func set_neon_color(c: Color, transition_duration: float = 0.0) -> void:
 		return
 	var start: Color = neon_color
 	var t := create_tween()
-	t.tween_method(func(v: Color) -> void:
-		neon_color = v
-	, start, c, transition_duration)
+	t.tween_method(Callable(self, "_set_neon_color_value"), start, c, transition_duration)
+
+
+func _set_neon_color_value(v: Color) -> void:
+	neon_color = v
 
 
 ## 震擊效果：短暫強化脈動（用於受擊、進入狂暴階段等）。

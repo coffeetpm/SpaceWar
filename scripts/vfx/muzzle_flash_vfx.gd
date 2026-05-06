@@ -6,7 +6,7 @@ extends Node2D
 const FLASH_STYLES: Dictionary = {
 	"beam": {"duration": 0.035, "scale": 5.5, "color": Color(0.35, 0.9, 1.0, 0.68), "shape": "line"},
 	"burst": {"duration": 0.09, "scale": 7.5, "color": Color(0.95, 0.75, 0.4, 0.78), "shape": "spike"},
-	"spread": {"duration": 0.055, "scale": 9.0, "color": Color(0.45, 0.88, 1.0, 0.7), "shape": "fan"},
+	"spread": {"duration": 0.045, "scale": 5.8, "color": Color(0.45, 0.88, 1.0, 0.55), "shape": "fan"},
 	"homing": {"duration": 0.048, "scale": 5.0, "color": Color(0.4, 1.0, 0.65, 0.65), "shape": "line"},
 	"rear": {"duration": 0.065, "scale": 7.0, "color": Color(0.88, 0.5, 0.92, 0.62), "shape": "emitter"},
 	"drones": {"duration": 0.05, "scale": 6.0, "color": Color(0.4, 0.8, 1.0, 0.5), "shape": "ring"},
@@ -60,7 +60,7 @@ func _make_engineered_flash(shape: String, scale_val: float, color_val: Color) -
 	if shape == "fan":
 		var container := Node2D.new()
 		container.name = "FanFlash"
-		var spread_deg := 22.0
+		var spread_deg := 16.0
 		for i in 3:
 			var a := deg_to_rad(-spread_deg + spread_deg * i)
 			var line := Line2D.new()

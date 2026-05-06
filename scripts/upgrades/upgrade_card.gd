@@ -182,6 +182,8 @@ func _get_hint_type() -> String:
 			return "spread"
 		if t in ["beam", "pierce", "line"]:
 			return "beam"
+		if t in ["dash", "vector", "velocity", "rail"]:
+			return "beam"
 	if id_lower.contains("echo") or id_lower.contains("temporal") or id_lower.contains("pierce"):
 		return "echo"
 	if id_lower.contains("orbit") or id_lower.contains("drone") or id_lower.contains("shock"):

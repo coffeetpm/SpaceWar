@@ -175,7 +175,8 @@ func _update_telegraph(active: bool, direction: Vector2) -> void:
 	if not _telegraph_line:
 		return
 	if not active:
-		_telegraph_line.default_color.a = 0.0
+		var c := _telegraph_line.default_color
+		_telegraph_line.default_color = Color(c.r, c.g, c.b, 0.0)
 		_telegraph_line.clear_points()
 		return
 	var len := 80.0

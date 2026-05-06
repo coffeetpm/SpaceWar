@@ -1,5 +1,5 @@
-extends Node2D
 @tool
+extends Node2D
 class_name ProceduralFighter
 ## 程序化科幻戰機——Ace Combat 風格，全部以 Polygon2D / Line2D 在代碼裏繪製。
 ## 無任何外部貼圖依賴；HDR 霓虹色配合 WorldEnvironment Bloom 自動發光。
@@ -60,6 +60,7 @@ var _shot_flash:        float = 0.0
 var _engine_intensity:  float = 0.75  ## 0=靜止, 1=全速（由 ShipVisualController 注入）
 var _mat_add:           Material = null
 var _built:             bool = false
+var _visual_tier:       int   = 1
 
 
 # ── Public API ──────────────────────────────────────────────────────────────
@@ -67,6 +68,14 @@ var _built:             bool = false
 ## 由 ShipVisualController 每 frame 呼叫，傳遞速度係數 (0..1)
 func set_engine_intensity(v: float) -> void:
 	_engine_intensity = clampf(v, 0.0, 1.0)
+
+
+func set_visual_tier(tier: int) -> void:
+	var next_tier := clampi(tier, 1, 4)
+	if next_tier == _visual_tier:
+		return
+	_visual_tier = next_tier
+	_rebuild_geometry()
 
 
 func _ready() -> void:
@@ -89,6 +98,7 @@ func _process(delta: float) -> void:
 # ═══════════════════════════════════════════════════════════════════════════
 
 func _build() -> void:
+	_reset_build_state()
 	## 三個渲染層 —————————————————
 	var base_layer   := _add_layer("_BaseLayer",   false)
 	var glow_layer   := _add_layer("_GlowLayer",   true)
@@ -112,6 +122,9 @@ func _build() -> void:
 	_poly(glow_layer, _wing_leading_pts(true),  Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.22))
 	_poly(glow_layer, _canard_leading_pts(false), Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.20))
 	_poly(glow_layer, _canard_leading_pts(true),  Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.20))
+	if _visual_tier >= 2:
+		_poly(glow_layer, _chine_strip_pts(false), Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.14))
+		_poly(glow_layer, _chine_strip_pts(true),  Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.14))
 
 	## ── Layer 2：Glow 邊框線（additive）───────────────────
 	## 機身主輪廓
@@ -138,49 +151,58 @@ func _build() -> void:
 
 	## ── Layer 3：細節線（additive）───────────────────────
 	## 機身脊線（中軸）
-	_line(detail_layer, PackedVector2Array([Vector2(0,-22), Vector2(0,19)]),
-		Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.6), edge_width * 0.65)
+	_line(detail_layer, PackedVector2Array([Vector2(0,-24), Vector2(0,20)]),
+		Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.42), edge_width * 0.72)
 
 	## 翼面面板線（對稱斜線）
 	for side in [false, true]:
 		var sx: float = -1.0 if not side else 1.0
 		## 前緣分割線
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 6.5, 0), Vector2(sx * 18.0, 6.5)]),
-			col_accent, edge_width * 0.55)
+			Vector2(sx * 5.5, -3.5), Vector2(sx * 18.4, 4.8)]),
+			Color(col_accent.r, col_accent.g, col_accent.b, 0.26), edge_width * 0.44)
 		## 後緣收束線
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 16.0, 10.5), Vector2(sx * 22.5, 16.5)]),
-			Color(col_edge_soft.r, col_edge_soft.g, col_edge_soft.b, 0.5), edge_width * 0.45)
+			Vector2(sx * 15.4, 10.0), Vector2(sx * 21.4, 15.2)]),
+			Color(col_edge_soft.r, col_edge_soft.g, col_edge_soft.b, 0.28), edge_width * 0.34)
 		## 機翼前緣延伸高亮
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 6.5, 0), Vector2(sx * 28.5, 10.0)]),
-			Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.35), edge_width * 0.40)
+			Vector2(sx * 7.0, -1.0), Vector2(sx * 24.0, 6.6)]),
+			Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.18), edge_width * 0.28)
 		## 鴨翼面板線
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 4.0, -12.5), Vector2(sx * 10.0, -9.0)]),
-			col_accent, edge_width * 0.50)
+			Vector2(sx * 3.5, -13.5), Vector2(sx * 10.8, -10.0)]),
+			Color(col_accent.r, col_accent.g, col_accent.b, 0.30), edge_width * 0.42)
 
 	## 引擎艙蓋線（橫截面）
 	for side in [false, true]:
 		var sx: float = -1.0 if not side else 1.0
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 2.5, 16.0), Vector2(sx * 5.8, 14.5)]),
-			col_accent, edge_width * 0.55)
+			Vector2(sx * 2.8, 17.0), Vector2(sx * 5.6, 15.2)]),
+			Color(col_accent.r, col_accent.g, col_accent.b, 0.24), edge_width * 0.42)
 		_line(detail_layer, PackedVector2Array([
-			Vector2(sx * 2.5, 19.5), Vector2(sx * 5.8, 18.0)]),
-			Color(col_edge_soft.r, col_edge_soft.g, col_edge_soft.b, 0.5), edge_width * 0.45)
+			Vector2(sx * 2.8, 20.0), Vector2(sx * 5.6, 18.6)]),
+			Color(col_edge_soft.r, col_edge_soft.g, col_edge_soft.b, 0.22), edge_width * 0.34)
 
 	## 橫向雙道強調線（科幻感）
-	for y_off in [-4.0, 6.0]:
+	for y_off in [-2.6, 4.6]:
 		_line(detail_layer, PackedVector2Array([
-			Vector2(-7.5, y_off), Vector2(7.5, y_off)]),
-			Color(col_accent.r, col_accent.g, col_accent.b, 0.35), edge_width * 0.40)
+			Vector2(-6.0, y_off), Vector2(6.0, y_off)]),
+			Color(col_accent.r, col_accent.g, col_accent.b, 0.18), edge_width * 0.28)
 
 	## 掃光條（scan line，橫向移動）
 	_scan_line = _line(detail_layer, PackedVector2Array([
 		Vector2(-32, 0), Vector2(32, 0)]),
 		Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.0), edge_width * 0.5)
+	if _scan_line:
+		_scan_line.width = edge_width * 0.3
+
+	if _visual_tier >= 3:
+		_poly(glow_layer, _wing_blade_pts(false), Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.16))
+		_poly(glow_layer, _wing_blade_pts(true), Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.16))
+	if _visual_tier >= 4:
+		_line(glow_layer, PackedVector2Array([Vector2(-5.5, 21.8), Vector2(0, 24.0), Vector2(5.5, 21.8)]),
+			Color(col_accent.r, col_accent.g, col_accent.b, 0.32), edge_width * 0.75)
 
 	## ── 駕駛艙（additive）────────────────────────────────
 	_cockpit_core = _poly(glow_layer, _cockpit_pts(), col_cockpit_core)
@@ -232,10 +254,10 @@ func _animate() -> void:
 	var plume_scale: float = lerpf(0.3, 1.0, _engine_intensity) * (0.8 + 0.2 * eng_sin)
 	if _engine_plume_L:
 		var cp := col_engine_plume
-		_engine_plume_L.color = Color(cp.r, cp.g, cp.b, cp.a * plume_scale)
+		_engine_plume_L.default_color = Color(cp.r, cp.g, cp.b, cp.a * plume_scale)
 	if _engine_plume_R:
 		var cp := col_engine_plume
-		_engine_plume_R.color = Color(cp.r, cp.g, cp.b, cp.a * plume_scale)
+		_engine_plume_R.default_color = Color(cp.r, cp.g, cp.b, cp.a * plume_scale)
 
 	## 駕駛艙閃爍（高頻，微妙）
 	var ck_t: float = 0.72 + 0.28 * (0.5 + 0.5 * sin(_time * cockpit_flicker_speed))
@@ -258,15 +280,15 @@ func _animate() -> void:
 
 	## 掃光線（每隔一段時間橫掃機身一次）
 	if _scan_line:
-		var scan_cycle: float = fmod(_time * scan_line_speed, 4.0)  ## 4秒一個週期
+		var scan_cycle: float = fmod(_time * scan_line_speed, 4.8)  ## 4.8秒一個週期
 		if scan_cycle < 1.2:
 			var prog: float = scan_cycle / 1.2
 			var y_pos: float = lerpf(-24.0, 28.0, prog)
-			var alpha: float = sin(prog * PI) * 0.55
+			var alpha: float = sin(prog * PI) * 0.18
 			_scan_line.position = Vector2(0, y_pos)
 			_scan_line.default_color = Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, alpha)
 		else:
-			_scan_line.default_color.a = 0.0
+			_scan_line.default_color = Color(col_edge_main.r, col_edge_main.g, col_edge_main.b, 0.0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -278,26 +300,26 @@ func _animate() -> void:
 ## 機身（飛梭形主體）
 func _fuselage_pts() -> PackedVector2Array:
 	return PackedVector2Array([
-		Vector2( 0.0, -22.0),   ## 機鼻尖
-		Vector2( 1.8, -18.5),   ## 機鼻右
-		Vector2( 3.8, -13.5),   ## 前機身右
-		Vector2( 5.2,  -7.0),   ## 駕駛艙右
-		Vector2( 6.8,   0.5),   ## 最寬處右
-		Vector2( 6.5,   8.5),   ## 中段右
-		Vector2( 5.8,  15.0),   ## 後機身右
-		Vector2( 4.5,  20.5),   ## 引擎接頸右
+		Vector2( 0.0, -24.0),   ## 機鼻尖
+		Vector2( 1.4, -20.5),   ## 機鼻右
+		Vector2( 3.4, -15.8),   ## 前機身右
+		Vector2( 5.1,  -8.2),   ## 駕駛艙右
+		Vector2( 6.4,   0.0),   ## 最寬處右
+		Vector2( 6.1,   8.2),   ## 中段右
+		Vector2( 5.5,  15.6),   ## 後機身右
+		Vector2( 4.3,  20.8),   ## 引擎接頸右
 		## 尾部（兩引擎之間）
-		Vector2( 2.2,  22.5),
-		Vector2( 0.0,  20.8),
-		Vector2(-2.2,  22.5),
+		Vector2( 2.1,  23.0),
+		Vector2( 0.0,  21.4),
+		Vector2(-2.1,  23.0),
 		## 左側鏡像
-		Vector2(-4.5,  20.5),
-		Vector2(-5.8,  15.0),
-		Vector2(-6.5,   8.5),
-		Vector2(-6.8,   0.5),
-		Vector2(-5.2,  -7.0),
-		Vector2(-3.8, -13.5),
-		Vector2(-1.8, -18.5),
+		Vector2(-4.3,  20.8),
+		Vector2(-5.5,  15.6),
+		Vector2(-6.1,   8.2),
+		Vector2(-6.4,   0.0),
+		Vector2(-5.1,  -8.2),
+		Vector2(-3.4, -15.8),
+		Vector2(-1.4, -20.5),
 	])
 
 
@@ -315,10 +337,10 @@ func _fuselage_edge_pts() -> PackedVector2Array:
 func _wing_pts(right: bool) -> PackedVector2Array:
 	var s: float = -1.0 if not right else 1.0
 	return PackedVector2Array([
-		Vector2(s *  6.2,  -1.0),  ## 翼根前緣
-		Vector2(s * 30.0,  10.0),  ## 翼尖
-		Vector2(s * 26.5,  20.5),  ## 翼尖後緣
-		Vector2(s *  5.5,  17.5),  ## 翼根後緣
+		Vector2(s *  6.0,  -0.8),  ## 翼根前緣
+		Vector2(s * 27.0,   8.4),  ## 翼尖
+		Vector2(s * 24.8,  19.6),  ## 翼尖後緣
+		Vector2(s *  6.2,  17.8),  ## 翼根後緣
 	])
 
 
@@ -345,10 +367,10 @@ func _wing_leading_pts(right: bool) -> PackedVector2Array:
 func _canard_pts(right: bool) -> PackedVector2Array:
 	var s: float = -1.0 if not right else 1.0
 	return PackedVector2Array([
-		Vector2(s *  3.5, -13.5),  ## 翼根前
-		Vector2(s * 16.0,  -9.5),  ## 翼尖
-		Vector2(s * 13.5,  -4.5),  ## 翼尖後
-		Vector2(s *  4.0,  -7.5),  ## 翼根後
+		Vector2(s *  3.5, -14.2),  ## 翼根前
+		Vector2(s * 14.2, -10.4),  ## 翼尖
+		Vector2(s * 12.4,  -5.1),  ## 翼尖後
+		Vector2(s *  4.4,  -8.1),  ## 翼根後
 	])
 
 
@@ -373,10 +395,10 @@ func _canard_leading_pts(right: bool) -> PackedVector2Array:
 func _tail_fin_pts(right: bool) -> PackedVector2Array:
 	var s: float = -1.0 if not right else 1.0
 	return PackedVector2Array([
-		Vector2(s *  4.0,  13.5),  ## 根部前
-		Vector2(s * 11.5,  10.5),  ## 尖端
-		Vector2(s * 10.5,  19.5),  ## 尖端後
-		Vector2(s *  4.0,  20.5),  ## 根部後
+		Vector2(s *  4.2,  13.8),  ## 根部前
+		Vector2(s * 10.2,  11.3),  ## 尖端
+		Vector2(s *  9.6,  20.5),  ## 尖端後
+		Vector2(s *  4.1,  20.9),  ## 根部後
 	])
 
 
@@ -483,7 +505,28 @@ func _plume_pts(right: bool) -> PackedVector2Array:
 	var s: float = -1.0 if not right else 1.0
 	return PackedVector2Array([
 		Vector2(s * 5.0, 27.5),
-		Vector2(s * 5.0, 34.0),
+		Vector2(s * 5.0, 32.0),
+	])
+
+
+func _chine_strip_pts(right: bool) -> PackedVector2Array:
+	var s: float = -1.0 if not right else 1.0
+	return PackedVector2Array([
+		Vector2(s * 2.1, -19.5),
+		Vector2(s * 4.1, -12.5),
+		Vector2(s * 4.4, -5.5),
+		Vector2(s * 2.9, -6.2),
+		Vector2(s * 1.5, -13.2),
+	])
+
+
+func _wing_blade_pts(right: bool) -> PackedVector2Array:
+	var s: float = -1.0 if not right else 1.0
+	return PackedVector2Array([
+		Vector2(s * 20.8, 9.1),
+		Vector2(s * 28.5, 10.0),
+		Vector2(s * 25.3, 16.4),
+		Vector2(s * 19.4, 14.9),
 	])
 
 
@@ -519,6 +562,27 @@ func _line(parent: Node2D, pts: PackedVector2Array, color: Color, width: float) 
 	l.antialiased    = true
 	parent.add_child(l)
 	return l
+
+
+func _reset_build_state() -> void:
+	for child in get_children():
+		child.queue_free()
+	_cockpit_core = null
+	_cockpit_rim = null
+	_engine_L_hot = null
+	_engine_R_hot = null
+	_engine_L_warm = null
+	_engine_R_warm = null
+	_engine_plume_L = null
+	_engine_plume_R = null
+	_scan_line = null
+	_edge_lines.clear()
+	_built = false
+
+
+func _rebuild_geometry() -> void:
+	_reset_build_state()
+	_build()
 
 
 static func _load_additive_mat() -> Material:

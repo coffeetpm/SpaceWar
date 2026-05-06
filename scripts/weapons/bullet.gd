@@ -61,12 +61,12 @@ const BULLET_GLOW_ALPHA_SCALE := 0.72
 
 ## Per-weapon trail identity: width, length, curve (0=thin tail, 1=full), stretch (gradient softness).
 const TRAIL_STYLES: Dictionary = {
-	"spread": {"width": 5.5, "length": 20, "curve": 0.15, "stretch": 0.4},
-	"burst": {"width": 11.0, "length": 12, "curve": 0.95, "stretch": 0.85},
-	"homing": {"width": 6.0, "length": 30, "curve": 0.25, "stretch": 0.55},
-	"rear": {"width": 8.0, "length": 18, "curve": 0.55, "stretch": 0.7},
+	"spread": {"width": 3.6, "length": 11, "curve": 0.08, "stretch": 0.18},
+	"burst": {"width": 8.5, "length": 9, "curve": 0.78, "stretch": 0.68},
+	"homing": {"width": 4.8, "length": 18, "curve": 0.18, "stretch": 0.38},
+	"rear": {"width": 6.2, "length": 12, "curve": 0.38, "stretch": 0.52},
 	"beam": {},
-	"drones": {"width": 4.0, "length": 14, "curve": 0.7, "stretch": 0.3},
+	"drones": {"width": 3.2, "length": 10, "curve": 0.55, "stretch": 0.22},
 }
 
 ## 效能：Curve / Gradient 資源依「武器 + 陣營」快取，避免 pool 回收每次重建。
@@ -167,9 +167,9 @@ static func _get_or_create_trail_resources(weapon_id: String, is_player: bool, s
 	var curve_val: float = float(style.get("curve", 0.5))
 	var stretch: float = float(style.get("stretch", 0.5))
 	var curve: Curve = Curve.new()
-	curve.add_point(Vector2(0.0, 0.03 + curve_val * 0.12))
-	curve.add_point(Vector2(0.4, 0.25 + curve_val * 0.35))
-	curve.add_point(Vector2(1.0, 1.0))
+	curve.add_point(Vector2(0.0, 0.08 + curve_val * 0.08))
+	curve.add_point(Vector2(0.42, 0.22 + curve_val * 0.22))
+	curve.add_point(Vector2(1.0, 0.82))
 	var g: Gradient = Gradient.new()
 	if is_player:
 		g.add_point(0.0, ArtDirection.TIER3_TRAIL_TAIL_PLAYER)
@@ -378,9 +378,9 @@ static func _get_default_trail_curve() -> Curve:
 	if _default_trail_curve:
 		return _default_trail_curve
 	_default_trail_curve = Curve.new()
-	_default_trail_curve.add_point(Vector2(0.0, 0.12))
-	_default_trail_curve.add_point(Vector2(0.5, 0.5))
-	_default_trail_curve.add_point(Vector2(1.0, 1.0))
+	_default_trail_curve.add_point(Vector2(0.0, 0.14))
+	_default_trail_curve.add_point(Vector2(0.5, 0.42))
+	_default_trail_curve.add_point(Vector2(1.0, 0.8))
 	return _default_trail_curve
 
 
@@ -389,13 +389,15 @@ static func _get_default_trail_gradient(is_player: bool) -> Gradient:
 		if _default_trail_gradient_player:
 			return _default_trail_gradient_player
 		_default_trail_gradient_player = Gradient.new()
-		_default_trail_gradient_player.add_point(0.0, ArtDirection.TIER3_TRAIL_TAIL_PLAYER)
+		_default_trail_gradient_player.add_point(0.0, Color(ArtDirection.TIER3_TRAIL_TAIL_PLAYER.r, ArtDirection.TIER3_TRAIL_TAIL_PLAYER.g, ArtDirection.TIER3_TRAIL_TAIL_PLAYER.b, 0.0))
+		_default_trail_gradient_player.add_point(0.58, Color(ArtDirection.TIER3_TRAIL_TAIL_PLAYER.r, ArtDirection.TIER3_TRAIL_TAIL_PLAYER.g, ArtDirection.TIER3_TRAIL_TAIL_PLAYER.b, 0.2))
 		_default_trail_gradient_player.add_point(1.0, ArtDirection.TIER3_TRAIL_HEAD_PLAYER)
 		return _default_trail_gradient_player
 	if _default_trail_gradient_enemy:
 		return _default_trail_gradient_enemy
 	_default_trail_gradient_enemy = Gradient.new()
-	_default_trail_gradient_enemy.add_point(0.0, ArtDirection.TIER3_TRAIL_TAIL_ENEMY)
+	_default_trail_gradient_enemy.add_point(0.0, Color(ArtDirection.TIER3_TRAIL_TAIL_ENEMY.r, ArtDirection.TIER3_TRAIL_TAIL_ENEMY.g, ArtDirection.TIER3_TRAIL_TAIL_ENEMY.b, 0.0))
+	_default_trail_gradient_enemy.add_point(0.58, Color(ArtDirection.TIER3_TRAIL_TAIL_ENEMY.r, ArtDirection.TIER3_TRAIL_TAIL_ENEMY.g, ArtDirection.TIER3_TRAIL_TAIL_ENEMY.b, 0.18))
 	_default_trail_gradient_enemy.add_point(1.0, ArtDirection.TIER3_TRAIL_HEAD_ENEMY)
 	return _default_trail_gradient_enemy
 
@@ -504,8 +506,8 @@ func _apply_needle(_damage: int, is_p: bool) -> void:
 	## 超長細尾
 	_default_trail_length_saved = trail_length
 	_default_trail_width_saved  = trail_width
-	trail_length = 58
-	trail_width  = 2.2
+	trail_length = 30
+	trail_width  = 1.7
 
 
 # ── Heavy 樣式 ──────────────────────────────────────────────

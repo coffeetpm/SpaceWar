@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UpgradeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/upgrades/upgrade_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"rail_overclock"
+display_name = "Rail Overclock"
+description = "Projectiles accelerate, tightening the kill rhythm."
+max_stacks = 4
+effect_type = &"projectile_speed"
+effect_value = 78.0
+primary_force = "light"
+tags = Array[String](["rail", "velocity"])

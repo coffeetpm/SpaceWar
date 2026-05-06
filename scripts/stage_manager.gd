@@ -668,6 +668,8 @@ func _get_upgrade_choices() -> Array:
 		pool.append(load("res://resources/upgrades/upgrade_fire_rate.tres") as Resource)
 		pool.append(load("res://resources/upgrades/upgrade_damage.tres") as Resource)
 		pool.append(load("res://resources/upgrades/upgrade_max_hp.tres") as Resource)
+		pool.append(load("res://resources/upgrades/upgrade_vector_drive.tres") as Resource)
+		pool.append(load("res://resources/upgrades/upgrade_rail_overclock.tres") as Resource)
 		_add_to_pool_if_unlocked(pool, "res://resources/upgrades/upgrade_pierce_echo.tres")
 		_add_to_pool_if_unlocked(pool, "res://resources/upgrades/upgrade_orbit_shock.tres")
 		_add_to_pool_if_unlocked(pool, "res://resources/upgrades/upgrade_pulse_split.tres")

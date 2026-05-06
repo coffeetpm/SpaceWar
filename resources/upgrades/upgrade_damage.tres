@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"damage"
 display_name = "Power Shot"
-description = "+1 damage"
+description = "Projectiles hit harder; simple, brutal, reliable."
 max_stacks = 5
 effect_type = &"damage"
 effect_value = 1.0

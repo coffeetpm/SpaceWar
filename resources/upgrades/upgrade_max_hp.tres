@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"max_hp"
 display_name = "Reinforce"
-description = "+2 max HP"
+description = "Armor lattice expands; recover two hull segments."
 max_stacks = 3
 effect_type = &"max_hp"
 effect_value = 2.0

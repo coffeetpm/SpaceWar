@@ -38,11 +38,19 @@ func _ready() -> void:
 	if _cockpit:
 		_cockpit.color = ArtDirection.TIER1_PLAYER_CORE
 	if _cockpit_glow:
-		_cockpit_glow.color = ArtDirection.TIER1_COCKPIT_GLOW
-		_cockpit_glow.color.a = 0.62
+		_cockpit_glow.color = Color(
+			ArtDirection.TIER1_COCKPIT_GLOW.r,
+			ArtDirection.TIER1_COCKPIT_GLOW.g,
+			ArtDirection.TIER1_COCKPIT_GLOW.b,
+			0.62
+		)
 	if _top_edge:
-		_top_edge.default_color = ArtDirection.TIER1_COCKPIT_GLOW
-		_top_edge.default_color.a = 0.88
+		_top_edge.default_color = Color(
+			ArtDirection.TIER1_COCKPIT_GLOW.r,
+			ArtDirection.TIER1_COCKPIT_GLOW.g,
+			ArtDirection.TIER1_COCKPIT_GLOW.b,
+			0.88
+		)
 	var parts: CPUParticles2D = get_node_or_null("ThrusterParticles") as CPUParticles2D
 	if parts:
 		parts.color = ArtDirection.PARTICLE_THRUSTER

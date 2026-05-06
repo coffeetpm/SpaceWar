@@ -6,7 +6,7 @@
 script = ExtResource("1_script")
 id = &"fire_rate"
 display_name = "Rapid Fire"
-description = "+2 fire rate"
+description = "Weapon cadence climbs; the screen starts singing."
 max_stacks = 5
 effect_type = &"fire_rate"
 effect_value = 2.0

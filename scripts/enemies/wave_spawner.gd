@@ -124,19 +124,21 @@ func start_rogu_wave(mini_stage_index: int, wave_index: int) -> void:
 
 
 func _compute_rogu_wave_enemy_count(mini_stage_index: int, wave_index: int) -> int:
-	var base := 4 + wave_index * 2 + mini(mini_stage_index / 2, 8)
-	return clampi(base, 4, 18)
+	var base := 5 + wave_index * 2 + mini(mini_stage_index / 2, 8)
+	if wave_index == 1:
+		base += 1
+	return clampi(base, 5, 20)
 
 
 func _pick_enemy_scene_for_rogu_wave(mini_stage_index: int, wave_index: int) -> PackedScene:
 	## 每波重新加權隨機，並依波次加深威脅組合（可擴充為 Resource 表）。
 	var tier := clampi(mini_stage_index, 1, 99)
 	var wave_roll := randf() + float(wave_index) * 0.07 + float(tier) * 0.01
-	var w_chase := 0.42 - wave_roll * 0.12
-	var w_shoot := 0.28 + sin(wave_roll * 5.3) * 0.08
-	var w_dash := 0.18 + cos(wave_roll * 4.1) * 0.06
-	var scout_bonus := 0.05 if wave_index == 1 else 0.0
-	var w_scout := 0.07 + scout_bonus
+	var w_chase := 0.34 - wave_roll * 0.08
+	var w_shoot := 0.30 + sin(wave_roll * 5.3) * 0.08
+	var w_dash := 0.20 + cos(wave_roll * 4.1) * 0.07
+	var scout_bonus := 0.11 if wave_index == 1 else 0.02
+	var w_scout := 0.10 + scout_bonus
 	var w_tank := 0.05 + float(tier) * 0.01
 	w_chase = maxf(w_chase, 0.08)
 	w_shoot = maxf(w_shoot, 0.05)

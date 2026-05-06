@@ -45,6 +45,12 @@ class_name BackgroundController
 @export var layer2_rect_path: NodePath = NodePath("Layer2_Nebula/NebulaRect")
 @export var layer3_rect_path: NodePath = NodePath("Layer3_Debris/FogRect")
 @export var debris_path:      NodePath = NodePath("Layer3_Debris/DebrisParticles")
+@export var layer1_backdrop_path: NodePath = NodePath("Layer1_DeepGrid/SpaceBackdropFar")
+@export var layer2_backdrop_path: NodePath = NodePath("Layer2_Nebula/SpaceBackdropMid")
+@export var layer2_glow_backdrop_path: NodePath = NodePath("Layer2_Nebula/SpaceBackdropGlow")
+
+@export_group("Backdrop Fit")
+@export var backdrop_cover_bleed: float = 1.35
 
 # ── Internal refs ──────────────────────────────────────────────────────────
 var _mat_grid:   ShaderMaterial = null
@@ -53,11 +59,15 @@ var _mat_fog:    ShaderMaterial = null
 var _debris:     GPUParticles2D = null
 var _camera:     Camera2D       = null
 var _player:     Node2D         = null
+var _layer1_backdrop: Sprite2D = null
+var _layer2_backdrop: Sprite2D = null
+var _layer2_glow_backdrop: Sprite2D = null
 
 var _current_offset: Vector2 = Vector2.ZERO
 var _target_offset:  Vector2 = Vector2.ZERO
 var _current_speed_f: float  = 0.0
 var _target_speed_f:  float  = 0.0
+var _last_viewport_size: Vector2 = Vector2.ZERO
 
 ## 上次相機位置（smooth delta calc）
 var _last_cam_pos: Vector2 = Vector2.ZERO
@@ -65,8 +75,10 @@ var _last_cam_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	_cache_shader_materials()
+	_cache_backdrops()
 	_setup_debris_texture()
 	_sync_motion_scales()
+	_fit_backdrops_to_viewport()
 	_camera = get_viewport().get_camera_2d()
 	if not Engine.is_editor_hint():
 		_player = _find_player()
@@ -76,6 +88,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_fit_backdrops_to_viewport_if_needed()
 	## 每隔一幀才更新（背景輕量化）
 	if Engine.get_process_frames() % 2 != 0:
 		return
@@ -143,6 +156,43 @@ func _cache_shader_materials() -> void:
 	_debris = get_node_or_null(debris_path) as GPUParticles2D
 
 
+func _cache_backdrops() -> void:
+	_layer1_backdrop = get_node_or_null(layer1_backdrop_path) as Sprite2D
+	_layer2_backdrop = get_node_or_null(layer2_backdrop_path) as Sprite2D
+	_layer2_glow_backdrop = get_node_or_null(layer2_glow_backdrop_path) as Sprite2D
+
+
+func _fit_backdrops_to_viewport_if_needed() -> void:
+	var vp_size: Vector2 = get_viewport().get_visible_rect().size if get_viewport() else Vector2.ZERO
+	if vp_size == _last_viewport_size:
+		return
+	_fit_backdrops_to_viewport()
+
+
+func _fit_backdrops_to_viewport() -> void:
+	var vp_size: Vector2 = get_viewport().get_visible_rect().size if get_viewport() else Vector2.ZERO
+	if vp_size.x <= 0.0 or vp_size.y <= 0.0:
+		return
+	_last_viewport_size = vp_size
+	_fit_single_backdrop(_layer1_backdrop, vp_size, 1.0)
+	_fit_single_backdrop(_layer2_backdrop, vp_size, 1.0)
+	_fit_single_backdrop(_layer2_glow_backdrop, vp_size, 1.05)
+
+
+func _fit_single_backdrop(sprite: Sprite2D, vp_size: Vector2, extra_scale: float) -> void:
+	if sprite == null or sprite.texture == null:
+		return
+	var tex_size: Vector2 = sprite.texture.get_size()
+	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
+		return
+	var target_w: float = vp_size.x * backdrop_cover_bleed
+	var target_h: float = vp_size.y * backdrop_cover_bleed
+	var cover_scale: float = maxf(target_w / tex_size.x, target_h / tex_size.y) * extra_scale
+	sprite.centered = false
+	sprite.position = Vector2.ZERO
+	sprite.scale = Vector2.ONE * cover_scale
+
+
 ## 程序化建立 8×8 霓虹方塊材質並注入到 GPUParticles2D。
 ## 粒子以 blend_add 混合，配合 WorldEnvironment Bloom 自動發光。
 func _setup_debris_texture() -> void:
@@ -199,33 +249,24 @@ func _on_theme_changed(theme_id: int, duration: float) -> void:
 	if _mat_grid:
 		var cur: Variant = _mat_grid.get_shader_parameter("grid_color")
 		var cur_c: Color = cur if cur is Color else Color(0.18, 0.55, 1.0, 1.0)
-		t.parallel().tween_method(
-			func(c: Color) -> void:
-				if _mat_grid: _mat_grid.set_shader_parameter("grid_color", c)
-			, cur_c, grid_c, duration)
+		t.parallel().tween_method(Callable(self, "_set_grid_color"), cur_c, grid_c, duration)
 	## 星雲色
 	if _mat_nebula:
 		var nebula_c: Color = ThemeManager.get_dust_color()
 		var cur: Variant = _mat_nebula.get_shader_parameter("nebula_color_a")
 		var cur_c: Color = cur if cur is Color else Color(0.08, 0.12, 0.45, 0.38)
 		t.parallel().tween_method(
-			func(c: Color) -> void:
-				if _mat_nebula:
-					_mat_nebula.set_shader_parameter("nebula_color_a",
-						Color(c.r, c.g, c.b, 0.38))
-			, cur_c, Color(nebula_c.r, nebula_c.g, nebula_c.b, 0.38), duration)
+			Callable(self, "_set_nebula_color_a"),
+			cur_c,
+			Color(nebula_c.r, nebula_c.g, nebula_c.b, 0.38),
+			duration
+		)
 	## 前景條紋色
 	if _mat_fog:
 		var fog_c: Color = ThemeManager.get_fog_color()
 		var cur: Variant = _mat_fog.get_shader_parameter("streak_color_a")
 		var cur_c: Color = cur if cur is Color else Color(0.2, 0.8, 1.0, 1.0)
-		t.parallel().tween_method(
-			func(c: Color) -> void:
-				if _mat_fog:
-					_mat_fog.set_shader_parameter("streak_color_a", c)
-					_mat_fog.set_shader_parameter("streak_color_b",
-						Color(c.b, c.r * 0.5, c.g, 1.0))
-			, cur_c, fog_c, duration)
+		t.parallel().tween_method(Callable(self, "_set_fog_streak_color"), cur_c, fog_c, duration)
 
 
 # ── 輔助函數 ───────────────────────────────────────────────────────────────
@@ -235,6 +276,27 @@ func _refresh_camera_player_refs() -> void:
 		_camera = get_viewport().get_camera_2d()
 	if not _player or not is_instance_valid(_player):
 		_player = _find_player()
+
+
+func _set_grid_color(c: Color) -> void:
+	if _mat_grid:
+		_mat_grid.set_shader_parameter("grid_color", c)
+
+
+func _set_nebula_color_a(c: Color) -> void:
+	if _mat_nebula:
+		_mat_nebula.set_shader_parameter("nebula_color_a", Color(c.r, c.g, c.b, 0.38))
+
+
+func _set_fog_streak_color(c: Color) -> void:
+	if _mat_fog:
+		_mat_fog.set_shader_parameter("streak_color_a", c)
+		_mat_fog.set_shader_parameter("streak_color_b", Color(c.b, c.r * 0.5, c.g, 1.0))
+
+
+func _set_grid_glow_boost_value(v: float) -> void:
+	if _mat_grid:
+		_mat_grid.set_shader_parameter("grid_glow_boost", v)
 
 
 func _find_player() -> Node2D:
@@ -258,10 +320,7 @@ func set_grid_glow_boost(boost: float, duration: float = 0.5) -> void:
 	var cur: Variant = _mat_grid.get_shader_parameter("grid_glow_boost")
 	var cur_f: float = cur if cur is float else 2.8
 	var t := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	t.tween_method(
-		func(v: float) -> void:
-			if _mat_grid: _mat_grid.set_shader_parameter("grid_glow_boost", v)
-		, boost, cur_f, duration)
+	t.tween_method(Callable(self, "_set_grid_glow_boost_value"), boost, cur_f, duration)
 
 
 ## Debug（F9）
