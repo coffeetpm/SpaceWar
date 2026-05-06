@@ -19,6 +19,9 @@ var _pulse_timer: float = 0.0
 var _telegraph_timer: float = 0.0
 var _damaged_this_pulse: bool = false
 var _refraction_damaged_this_pulse: bool = false
+## Signature moment 節流：避免每 pulse 都 new 節點造成 GC / 渲染抖動。
+var _last_signature_moment_at: float = -1.0
+const SIGNATURE_MOMENT_MIN_INTERVAL := 0.22
 var _area: Area2D
 var _line: Line2D
 var _glow: Line2D
@@ -53,7 +56,7 @@ func _draw_beam_visual() -> void:
 		_line.add_point(Vector2.ZERO)
 		_line.add_point(Vector2(0, -length))
 		if ADDITIVE_MATERIAL:
-    		_line.material = ADDITIVE_MATERIAL
+			_line.material = ADDITIVE_MATERIAL
 		add_child(_line)
 	_glow = get_node_or_null("Glow") as Line2D
 	if not _glow:
@@ -65,7 +68,7 @@ func _draw_beam_visual() -> void:
 		_glow.add_point(Vector2.ZERO)
 		_glow.add_point(Vector2(0, -length))
 		if ADDITIVE_MATERIAL:
-    		_glow.material = ADDITIVE_MATERIAL
+			_glow.material = ADDITIVE_MATERIAL
 		add_child(_glow)
 	# Lock-on telegraph: thin line, dim
 	_telegraph_line = Line2D.new()
@@ -75,7 +78,7 @@ func _draw_beam_visual() -> void:
 	_telegraph_line.add_point(Vector2.ZERO)
 	_telegraph_line.add_point(Vector2(0, -length))
 	if ADDITIVE_MATERIAL:
-    	_telegraph_line.material = ADDITIVE_MATERIAL
+		_telegraph_line.material = ADDITIVE_MATERIAL
 	add_child(_telegraph_line)
 	_telegraph_glow = Line2D.new()
 	_telegraph_glow.name = "TelegraphGlow"
@@ -85,7 +88,7 @@ func _draw_beam_visual() -> void:
 	_telegraph_glow.add_point(Vector2.ZERO)
 	_telegraph_glow.add_point(Vector2(0, -length))
 	if ADDITIVE_MATERIAL:
-    	_telegraph_glow.material = ADDITIVE_MATERIAL
+		_telegraph_glow.material = ADDITIVE_MATERIAL
 	add_child(_telegraph_glow)
 	_telegraph_line.visible = false
 	_telegraph_glow.visible = false
@@ -104,7 +107,7 @@ func _build_refraction() -> void:
 	r_line.add_point(Vector2.ZERO)
 	r_line.add_point(Vector2(0, -length))
 	if ADDITIVE_MATERIAL:
-    	r_line.material = ADDITIVE_MATERIAL
+		r_line.material = ADDITIVE_MATERIAL
 	_refraction_visual.add_child(r_line)
 	var r_glow := Line2D.new()
 	r_glow.width = width * 1.0
@@ -113,7 +116,7 @@ func _build_refraction() -> void:
 	r_glow.add_point(Vector2.ZERO)
 	r_glow.add_point(Vector2(0, -length))
 	if ADDITIVE_MATERIAL:
-    	r_glow.material = ADDITIVE_MATERIAL
+		r_glow.material = ADDITIVE_MATERIAL
 	_refraction_visual.add_child(r_glow)
 	_refraction_visual.visible = false
 	# Refraction area: same shape as beam, rotated
@@ -257,7 +260,12 @@ func set_damage(d: int) -> void:
 
 
 ## Signature moment: refraction trail (slice in space) + clean impact at beam tip. Technological, precise.
+## 節流：每 SIGNATURE_MOMENT_MIN_INTERVAL 秒最多一次，避免快速 pulse 時大量節點分配。
 func _spawn_signature_beam_moment() -> void:
+	var now_s: float = Time.get_ticks_msec() * 0.001
+	if now_s - _last_signature_moment_at < SIGNATURE_MOMENT_MIN_INTERVAL:
+		return
+	_last_signature_moment_at = now_s
 	var tip_global: Vector2 = global_transform * Vector2(0, -length)
 	var scene := get_tree().current_scene
 	if not scene:
@@ -272,7 +280,7 @@ func _spawn_signature_beam_moment() -> void:
 	trail.add_point(Vector2.ZERO)
 	trail.add_point(Vector2(0, -length))
 	if ADDITIVE_MATERIAL:
-    	trail.material = ADDITIVE_MATERIAL
+		trail.material = ADDITIVE_MATERIAL
 	trail_node.add_child(trail)
 	scene.add_child(trail_node)
 	var t_trail := trail_node.create_tween()

@@ -91,6 +91,10 @@ func apply_to(target: Node2D, tier: int = -1, color_override: Variant = null) ->
 	else:
 		color = _resolve_color(target)
 
+	## 將最終套用色寫入 target meta，讓外部（例：爆炸特效）能讀取該敵機嘅霓虹色。
+	target.set_meta("neon_color", color)
+	target.set_meta("neon_tier", tier)
+
 	var style := Node2D.new()
 	style.name = STYLE_ROOT_NAME
 	style.z_as_relative = true

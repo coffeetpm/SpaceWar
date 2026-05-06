@@ -1,5 +1,11 @@
 res://scenes/main/main.tscn
-res://scripts/vfx/world_environment_setup.gd
 res://scripts/stage_manager.gd
-res://scripts/enemies/enemy_base.gd
-res://scripts/enemies/enemy_dasher.gd
+res://scripts/autoload/event_bus.gd
+res://scripts/ui/boss_hud.gd
+res://resources/shaders/parallax_dust.gdshader
+res://resources/shaders/parallax_fog.gdshader
+res://resources/shaders/parallax_stars.gdshader
+res://scripts/player/player_controller.gd
+res://scripts/vfx/parallax_controller.gd
+res://scripts/weapons/bullet.gd
+res://scripts/autoload/bullet_factory.gd

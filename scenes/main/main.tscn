@@ -1,4 +1,4 @@
-[gd_scene load_steps=51 format=3 uid="uid://dagekh8w11x47"]
+[gd_scene load_steps=52 format=3 uid="uid://dagekh8w11x47"]
 
 [ext_resource type="PackedScene" uid="uid://player001" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/vfx/game_camera.tscn" id="2_camera"]
@@ -42,6 +42,7 @@
 [ext_resource type="Script" uid="uid://crenccepgl7x" path="res://scripts/vfx/level_up_vfx.gd" id="40_levelup"]
 [ext_resource type="Script" uid="uid://bpd5gg37r4qpc" path="res://scripts/roguelike/level_manager.gd" id="41_level_mgr"]
 [ext_resource type="Script" uid="uid://b10dmw55v6eri" path="res://scripts/vfx/world_environment_setup.gd" id="42_world_env"]
+[ext_resource type="PackedScene" path="res://scenes/background/Background.tscn" id="52_background"]
 
 [sub_resource type="Gradient" id="Gradient_beat"]
 offsets = PackedFloat32Array(0, 0.25, 0.5, 0.75, 1)
@@ -143,6 +144,7 @@ script = ExtResource("42_world_env")
 script = ExtResource("33_beauty")
 
 [node name="ParallaxController" type="Node" parent="."]
+process_mode = 4
 script = ExtResource("25_parallax")
 
 [node name="ParallaxLayer" type="CanvasLayer" parent="ParallaxController"]
@@ -201,7 +203,9 @@ script = ExtResource("34_rhythm")
 
 [node name="World" type="Node2D" parent="."]
 
-[node name="Background" type="ColorRect" parent="World"]
+[node name="Background" parent="World" instance=ExtResource("52_background")]
+
+[node name="LegacyBackground" type="ColorRect" parent="World"]
 visible = false
 z_index = -100
 material = ExtResource("13_bg_mat")

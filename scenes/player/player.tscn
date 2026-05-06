@@ -1,16 +1,45 @@
-[gd_scene load_steps=6 format=3 uid="uid://player001"]
+[gd_scene load_steps=11 format=3 uid="uid://player001"]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_player"]
 [ext_resource type="Material" uid="uid://additive_mat" path="res://resources/materials/additive_material.tres" id="2_mat"]
 [ext_resource type="Material" uid="uid://neon_sprite_mat" path="res://resources/materials/neon_sprite_material.tres" id="3_neon"]
-[ext_resource type="Script" path="res://scripts/player/thruster_fx.gd" id="4_thruster"]
+[ext_resource type="Script" path="res://scripts/player/ship_visual_controller.gd" id="4_visual"]
 [ext_resource type="Script" path="res://scripts/player/focus_anchor.gd" id="5_focus"]
+[ext_resource type="Shader" path="res://resources/shaders/ship_outline.gdshader" id="6_outline_shader"]
+[ext_resource type="Script" path="res://scripts/player/procedural_fighter.gd" id="7_fighter"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMat_thruster"]
+direction = Vector3(0, 1, 0)
+spread = 14.0
+initial_velocity_min = 80.0
+initial_velocity_max = 160.0
+angular_velocity_min = -30.0
+angular_velocity_max = 30.0
+scale_min = 1.8
+scale_max = 3.5
+color = Color(0.18, 0.45, 0.7, 0.35)
+gravity = Vector3(0, -30, 0)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 14.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_hitbox"]
 radius = 10.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_outline"]
+shader = ExtResource("6_outline_shader")
+shader_parameter/flow_speed = 2.8
+shader_parameter/outline_width = 0.055
+shader_parameter/outline_color = Color(0.2, 0.8, 1.0, 1.0)
+shader_parameter/hdr_boost = 3.2
+shader_parameter/shimmer_freq = 18.0
+shader_parameter/shimmer_amp = 0.45
+shader_parameter/master_alpha = 0.75
+shader_parameter/flash_modifier = 0.0
+shader_parameter/flash_boost = 2.8
+shader_parameter/engine_boost = 0.0
+shader_parameter/engine_pos = Vector2(0.5, 0.85)
+shader_parameter/engine_radius = 0.22
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 collision_layer = 2
@@ -37,67 +66,89 @@ joint_mode = 1
 
 [node name="Visual" type="Node2D" parent="."]
 scale = Vector2(1.25, 1.25)
-script = ExtResource("4_thruster")
+script = ExtResource("4_visual")
+
+[node name="ShipOutline" type="Polygon2D" parent="Visual"]
+z_index = 2
+material = SubResource("ShaderMat_outline")
+polygon = PackedVector2Array(0, -16, -10, 14, 10, 14)
+color = Color(1, 1, 1, 1)
+
+[node name="Fighter" type="Node2D" parent="Visual"]
+script = ExtResource("7_fighter")
 
 [node name="Thruster" type="Polygon2D" parent="Visual"]
+visible = false
 color = Color(0.4, 0.85, 1.2, 0.9)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(0, 16, -5, 12, 5, 12)
 
 [node name="Body" type="Polygon2D" parent="Visual"]
+visible = false
 color = Color(0.35, 0.7, 1.15, 0.95)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(0, -14, -8, 12, 8, 12)
 
 [node name="BodyOutline" type="Line2D" parent="Visual"]
+visible = false
 width = 1.2
 default_color = Color(0.45, 0.85, 1.2, 0.9)
 material = ExtResource("2_mat")
 points = PackedVector2Array(0, -14, -8, 12, 8, 12, 0, -14)
 
 [node name="WingL" type="Polygon2D" parent="Visual"]
+visible = false
 color = Color(0.3, 0.65, 1.1, 0.9)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(-8, 5, -14, 12, -8, 12)
 
 [node name="WingR" type="Polygon2D" parent="Visual"]
+visible = false
 color = Color(0.3, 0.65, 1.1, 0.9)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(8, 5, 14, 12, 8, 12)
 
 [node name="CockpitGlow" type="Polygon2D" parent="Visual"]
+visible = false
 z_index = -1
 color = Color(0.42, 0.82, 1.25, 0.62)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(0, -9, 6, 0, 0, 7, -6, 0)
 
 [node name="Cockpit" type="Polygon2D" parent="Visual"]
+visible = false
 color = Color(0.65, 0.95, 1.35, 0.98)
 material = ExtResource("3_neon")
 polygon = PackedVector2Array(0, -6, 3.5, 0, 0, 4, -3.5, 0)
 
 [node name="TopEdge" type="Line2D" parent="Visual"]
+visible = false
 width = 1.8
 default_color = Color(0.5, 0.9, 1.25, 0.9)
 material = ExtResource("2_mat")
 points = PackedVector2Array(0, -14, -8, 12, 8, 12, 0, -14)
 
-[node name="ThrusterParticles" type="CPUParticles2D" parent="Visual"]
-position = Vector2(0, 14)
+[node name="ThrusterGPU" type="GPUParticles2D" parent="Visual"]
+position = Vector2(0, 15)
 z_index = -2
-amount = 8
-lifetime = 0.2
+amount = 18
+lifetime = 0.18
 emitting = true
 explosiveness = 0.0
-direction = Vector2(0, 1)
-spread = 12.0
-initial_velocity_min = 80
-initial_velocity_max = 140
-gravity = Vector2(0, -40)
-scale_amount_min = 0.3
-scale_amount_max = 0.6
-material = ExtResource("2_mat")
-color = Color(0.18, 0.45, 0.7, 0.35)
+local_coords = false
+process_material = SubResource("ParticleProcessMat_thruster")
+
+[node name="MountLeft" type="Node2D" parent="Visual"]
+position = Vector2(-14, 6)
+visible = false
+
+[node name="MountRight" type="Node2D" parent="Visual"]
+position = Vector2(14, 6)
+visible = false
+
+[node name="MountNose" type="Node2D" parent="Visual"]
+position = Vector2(0, -16)
+visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_body")

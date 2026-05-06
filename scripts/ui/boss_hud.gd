@@ -23,11 +23,19 @@ func _ready() -> void:
 
 func _on_boss_spawned(boss: Node) -> void:
 	_boss = boss
-	var name_str := "Boss"
-	if boss is RefractionCore:
+	var name_str := "BOSS"
+	## 優先 BaseBoss 嘅 boss_name
+	if boss.get("boss_name") != null and String(boss.get("boss_name")) != "":
+		name_str = String(boss.get("boss_name"))
+	elif boss is RefractionCore:
 		name_str = RefractionCore.BOSS_DISPLAY_NAME
+	elif boss.get("DISPLAY_NAME") != null:
+		name_str = String(boss.get("DISPLAY_NAME"))
+	## HP：BaseBoss 用 max_health；NeonTitan/RefractionCore 用 max_hp
 	_max_hp = 400
-	if boss.get("max_hp") != null:
+	if boss.get("max_health") != null and int(boss.get("max_health")) > 0:
+		_max_hp = int(boss.get("max_health"))
+	elif boss.get("max_hp") != null and int(boss.get("max_hp")) > 0:
 		_max_hp = int(boss.get("max_hp"))
 	if _name_label:
 		_name_label.text = name_str

@@ -1,0 +1,162 @@
+[gd_scene load_steps=11 format=3 uid="uid://bg_main001"]
+
+[ext_resource type="Script" path="res://scripts/vfx/background_controller.gd" id="1_controller"]
+[ext_resource type="Shader" path="res://resources/shaders/parallax_stars.gdshader" id="2_shader_grid"]
+[ext_resource type="Shader" path="res://resources/shaders/parallax_dust.gdshader" id="3_shader_nebula"]
+[ext_resource type="Shader" path="res://resources/shaders/parallax_fog.gdshader" id="4_shader_fog"]
+
+;; ─── Layer 1: Deep Grid (Star field + Perspective Neon Grid) ──────────────
+[sub_resource type="ShaderMaterial" id="ShaderMat_grid"]
+shader = ExtResource("2_shader_grid")
+shader_parameter/star_density = 32.0
+shader_parameter/twinkle_speed = 0.55
+shader_parameter/star_color = Color(0.55, 0.65, 1.0, 0.85)
+shader_parameter/dim_color = Color(0.04, 0.06, 0.14, 1.0)
+shader_parameter/star_density_b = 78.0
+shader_parameter/star_color_b = Color(0.28, 0.35, 0.58, 0.42)
+shader_parameter/grid_enable = 0.88
+shader_parameter/grid_scale = 12.0
+shader_parameter/grid_color = Color(0.18, 0.55, 1.0, 1.0)
+shader_parameter/grid_line_width = 0.016
+shader_parameter/grid_glow_boost = 2.8
+shader_parameter/perspective_skew = 0.72
+shader_parameter/grid_scroll_y = 0.32
+shader_parameter/grid_pulse_speed = 1.4
+shader_parameter/grid_pulse_amp = 0.38
+shader_parameter/scroll_offset = Vector2(0, 0)
+shader_parameter/player_offset = Vector2(0, 0)
+shader_parameter/focus_center = Vector2(0.5, 0.5)
+shader_parameter/focus_inner_radius = 0.0
+shader_parameter/focus_outer_radius = 0.75
+
+;; ─── Layer 2: Nebula + City Silhouette ────────────────────────────────────
+[sub_resource type="ShaderMaterial" id="ShaderMat_nebula"]
+shader = ExtResource("3_shader_nebula")
+shader_parameter/nebula_scale = 2.2
+shader_parameter/nebula_speed = 0.028
+shader_parameter/nebula_color_a = Color(0.08, 0.12, 0.45, 0.38)
+shader_parameter/nebula_color_b = Color(0.25, 0.05, 0.38, 0.28)
+shader_parameter/nebula_color_c = Color(0.0, 0.18, 0.35, 0.22)
+shader_parameter/nebula_contrast = 1.45
+shader_parameter/silhouette_enable = 0.82
+shader_parameter/skyline_y = 0.68
+shader_parameter/skyline_height = 0.28
+shader_parameter/building_color = Color(0.01, 0.02, 0.06, 1.0)
+shader_parameter/window_color_a = Color(1.0, 0.65, 0.1, 1.0)
+shader_parameter/window_color_b = Color(0.1, 0.85, 1.0, 1.0)
+shader_parameter/window_density = 0.055
+shader_parameter/window_hdr = 2.6
+shader_parameter/skyline_drift = 0.32
+shader_parameter/building_freq = 7.5
+shader_parameter/edge_glow_width = 0.022
+shader_parameter/edge_glow_color = Color(0.3, 0.7, 1.0, 1.0)
+shader_parameter/edge_glow_hdr = 3.2
+shader_parameter/scroll_offset = Vector2(0, 0)
+shader_parameter/player_offset = Vector2(0, 0)
+shader_parameter/focus_center = Vector2(0.5, 0.5)
+shader_parameter/focus_inner_radius = 0.0
+shader_parameter/focus_outer_radius = 0.85
+
+;; ─── Layer 3: Speed Streaks + Floating Particles ──────────────────────────
+[sub_resource type="ShaderMaterial" id="ShaderMat_fog"]
+shader = ExtResource("4_shader_fog")
+shader_parameter/streak_speed = 18.0
+shader_parameter/streak_density = 22.0
+shader_parameter/streak_length = 0.12
+shader_parameter/streak_width = 0.004
+shader_parameter/streak_color_a = Color(0.2, 0.8, 1.0, 1.0)
+shader_parameter/streak_color_b = Color(0.8, 0.2, 1.0, 1.0)
+shader_parameter/streak_hdr = 3.5
+shader_parameter/speed_factor = 0.0
+shader_parameter/particle_density = 48.0
+shader_parameter/particle_speed = 1.2
+shader_parameter/particle_size = 0.012
+shader_parameter/particle_color = Color(0.4, 1.0, 0.6, 1.0)
+shader_parameter/particle_hdr = 2.4
+shader_parameter/particle_h_drift = 0.28
+shader_parameter/scroll_offset = Vector2(0, 0)
+shader_parameter/player_offset = Vector2(0, 0)
+shader_parameter/player_speed_x = 0.0
+
+;; ─── GPUParticles2D: Neon Debris squares ──────────────────────────────────
+[sub_resource type="ParticleProcessMaterial" id="PartMat_debris"]
+emission_shape = 1
+emission_box_extents = Vector3(1100.0, 650.0, 0.0)
+direction = Vector3(0.0, 1.0, 0.0)
+spread = 6.0
+initial_velocity_min = 160.0
+initial_velocity_max = 460.0
+angular_velocity_min = -120.0
+angular_velocity_max = 120.0
+scale_min = 1.5
+scale_max = 6.5
+color = Color(0.28, 1.8, 3.5, 1.0)
+gravity = Vector3(0, 0, 0)
+lifetime_randomness = 0.55
+turbulence_enabled = true
+turbulence_noise_strength = 0.35
+turbulence_noise_scale = 2.5
+
+;; ─────────────────────────────────────────────────────────────────────────────
+;; 場景節點樹
+;; ─────────────────────────────────────────────────────────────────────────────
+
+[node name="Background" type="ParallaxBackground"]
+layer = -200
+script = ExtResource("1_controller")
+
+;; ── Layer 1: The Deep Grid ───────────────────────────────────────────────
+[node name="Layer1_DeepGrid" type="ParallaxLayer" parent="."]
+motion_scale = Vector2(0.05, 0.05)
+motion_mirroring = Vector2(1920, 1080)
+
+[node name="GridRect" type="ColorRect" parent="Layer1_DeepGrid"]
+offset_left = -960.0
+offset_top = -540.0
+offset_right = 960.0
+offset_bottom = 540.0
+size = Vector2(1920, 1080)
+material = SubResource("ShaderMat_grid")
+color = Color(0.04, 0.05, 0.13, 1.0)
+mouse_filter = 2
+
+;; ── Layer 2: Distant Nebula / City ───────────────────────────────────────
+[node name="Layer2_Nebula" type="ParallaxLayer" parent="."]
+motion_scale = Vector2(0.25, 0.25)
+motion_mirroring = Vector2(1920, 1080)
+
+[node name="NebulaRect" type="ColorRect" parent="Layer2_Nebula"]
+offset_left = -960.0
+offset_top = -540.0
+offset_right = 960.0
+offset_bottom = 540.0
+size = Vector2(1920, 1080)
+material = SubResource("ShaderMat_nebula")
+color = Color(0.05, 0.06, 0.10, 0.85)
+mouse_filter = 2
+
+;; ── Layer 3: Foreground Debris / Speed Streaks ───────────────────────────
+[node name="Layer3_Debris" type="ParallaxLayer" parent="."]
+motion_scale = Vector2(1.20, 1.20)
+
+;; Shader-driven speed streaks (blend_add, zero alpha base)
+[node name="FogRect" type="ColorRect" parent="Layer3_Debris"]
+offset_left = -960.0
+offset_top = -540.0
+offset_right = 960.0
+offset_bottom = 540.0
+size = Vector2(1920, 1080)
+material = SubResource("ShaderMat_fog")
+color = Color(0, 0, 0, 0)
+mouse_filter = 2
+
+;; GPUParticles2D: Neon square debris flying past (texture created in code)
+[node name="DebrisParticles" type="GPUParticles2D" parent="Layer3_Debris"]
+position = Vector2(0, 0)
+amount = 80
+lifetime = 3.8
+explosiveness = 0.0
+emitting = true
+local_coords = false
+process_material = SubResource("PartMat_debris")
+visibility_rect = Rect2(-1200, -700, 2400, 1400)

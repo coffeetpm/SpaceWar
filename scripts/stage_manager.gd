@@ -39,6 +39,15 @@ const UPGRADE_CHOICE_TIME_SCALE := 0.22
 ## Optional: spawn Refraction Core (or other boss) during boss burst. Leave empty to skip boss spawn.
 @export var boss_scene: PackedScene = null
 @export var boss_container_path: NodePath = NodePath("../Enemies")
+## Stage→Boss mapping：依 mini-stage boss 關序號（index 0 = 第一個 boss 關）。循環使用。
+## 建議填入：[neon_tank, cyber_warship, humanoid_ace, neon_titan, refraction_core]
+@export var stage_boss_map: Array[PackedScene] = []
+## Stage 主題名（對應 boss 序號；顯示於 BossWarning 字幕）。
+@export var stage_theme_names: Array[String] = ["CYBER CITY", "DEEP SPACE", "NEON CORE"]
+## Boss 警報 UI 顯示時長（秒），會延遲 boss 實體生成。
+@export var boss_warning_duration: float = 2.2
+## BossWarning UI 場景（可選；若設置則實例化該場景，否則程序化創建 BossWarning）
+@export var boss_warning_scene: PackedScene = null
 
 var burst_index: int = 1
 var _boss_instance: Node2D = null
@@ -54,6 +63,8 @@ var _awaiting_burst_end_upgrade: bool = false  # true when upgrade pick is for e
 var _is_level_up_choice: bool = false  # true when upgrade UI was shown due to level-up (freeze world, no timer change)
 ## 在 level-up 升級期間若波次清空事件觸發，延遲至升級完成後處理。避免 wave_cleared 被丟棄而卡關。
 var _pending_wave_cleared_number: int = -1
+## 當 boss 死亡同 level-up 同幀觸發時，延遲 boss 清理流程直到玩家揀完升級。
+var _pending_boss_defeated: bool = false
 
 var _hud: Control
 var _upgrade_choice: Control
@@ -123,18 +134,55 @@ func _cache_hud_nodes() -> void:
 	_hud_exp_label = _hud.get_node_or_null("HUDPanel/EarnedLabel") as Label
 	_hud_total_currency_label = _hud.get_node_or_null("HUDPanel/TotalCurrencyLabel") as Label
 
+func _resolve_stage_boss_scene() -> PackedScene:
+	## 依目前 burst_index 解析今次 boss 關對應嘅 PackedScene。
+	if stage_boss_map.is_empty():
+		return boss_scene
+	var lm_div: int = 1
+	if _level_manager and _level_manager.boss_every_n_mini_stages > 0:
+		lm_div = _level_manager.boss_every_n_mini_stages
+	## boss_index：第幾個 boss 關（0-based）
+	var boss_index: int = maxi(0, (burst_index / lm_div) - 1)
+	var idx: int = boss_index % stage_boss_map.size()
+	var s: PackedScene = stage_boss_map[idx]
+	if s == null:
+		return boss_scene
+	return s
+
+
+func _resolve_stage_theme_name() -> String:
+	if stage_theme_names.is_empty():
+		return ""
+	var lm_div: int = 1
+	if _level_manager and _level_manager.boss_every_n_mini_stages > 0:
+		lm_div = _level_manager.boss_every_n_mini_stages
+	var boss_index: int = maxi(0, (burst_index / lm_div) - 1)
+	return stage_theme_names[boss_index % stage_theme_names.size()]
+
+
 func _spawn_boss() -> void:
-	if not boss_scene:
+	var scene_to_use: PackedScene = _resolve_stage_boss_scene()
+	if not scene_to_use:
+		return
+	## 先顯示警報：BOSS WARNING + 紅光閃爍 + glow pulse + bass boost。
+	var boss_name_for_warning: String = _peek_boss_display_name(scene_to_use)
+	_trigger_boss_warning(boss_name_for_warning)
+	## 延後生成實體，等警報播放到一半（視覺節奏）。
+	await get_tree().create_timer(maxf(0.15, boss_warning_duration * 0.55)).timeout
+	if _death_recovery_aborted():
 		return
 	var container: Node = get_parent().get_node_or_null(boss_container_path) if not boss_container_path.is_empty() else get_parent()
 	if not container:
 		container = get_parent()
-	var inst: Node2D = boss_scene.instantiate() as Node2D
+	var inst: Node2D = scene_to_use.instantiate() as Node2D
+	if not inst:
+		push_warning("StageManager: failed to instantiate boss scene")
+		return
 	container.add_child(inst)
 	var viewport_center := Vector2(576, 324)
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if player and is_instance_valid(player):
-		inst.global_position = player.global_position + Vector2(0, -120)
+		inst.global_position = player.global_position + Vector2(0, -160)
 	else:
 		inst.global_position = viewport_center + Vector2(0, -100)
 	_boss_instance = inst
@@ -143,8 +191,57 @@ func _spawn_boss() -> void:
 		EventBus.boss_spawned.emit(inst)
 
 
+func _peek_boss_display_name(scene: PackedScene) -> String:
+	## 以 scene path 猜 boss 名；若無對映就顯示 stage 主題名。
+	var path: String = scene.resource_path.to_lower() if scene else ""
+	if path.contains("neon_tank"):
+		return "NEON TANK"
+	if path.contains("cyber_warship") or path.contains("warship"):
+		return "CYBER WARSHIP"
+	if path.contains("humanoid_ace") or path.contains("ace"):
+		return "HUMANOID ACE"
+	if path.contains("neon_titan") or path.contains("titan"):
+		return "NEON TITAN"
+	if path.contains("refraction"):
+		return "REFRACTION EXAMINER"
+	var theme: String = _resolve_stage_theme_name()
+	return theme if theme != "" else "BOSS"
+
+
+func _trigger_boss_warning(display_name: String) -> void:
+	if EventBus and EventBus.has_signal("boss_warning_requested"):
+		EventBus.boss_warning_requested.emit(display_name, boss_warning_duration)
+	var root: Node = get_tree().current_scene
+	if not root:
+		return
+	if boss_warning_scene:
+		var inst: Node = boss_warning_scene.instantiate()
+		if inst is BossWarning:
+			(inst as BossWarning).duration = boss_warning_duration
+		root.add_child(inst)
+		if inst.has_method("_play"):
+			inst.call_deferred("_play", display_name)
+		return
+	## 程序化生成
+	var warn: BossWarning = BossWarning.spawn(root, display_name, boss_warning_duration)
+	if warn == null:
+		push_warning("StageManager: failed to spawn BossWarning")
+
+
+func _death_recovery_aborted() -> bool:
+	## Boss 警報期間玩家陣亡時要中止生成。
+	return stage_state == State.GAME_OVER
+
+
 func _on_boss_defeated() -> void:
-	if stage_state != State.RUNNING or not _boss_instance:
+	if not _boss_instance:
+		return
+	## 允許 RUNNING / UPGRADE_PICK 狀態：level-up UI 同 boss 死亡可能同幀，UPGRADE_PICK 期間延後處理。
+	if stage_state != State.RUNNING and stage_state != State.UPGRADE_PICK:
+		return
+	if _is_level_up_choice:
+		## 玩家 level-up 中，先記錄；level-up 完成後由 _on_upgrade_chosen 補發。
+		_pending_boss_defeated = true
 		return
 	burst_timer = 0.0
 	_stop_spawner()
@@ -205,6 +302,7 @@ func start_game() -> void:
 	_awaiting_burst_end_upgrade = false
 	_is_level_up_choice = false
 	_pending_wave_cleared_number = -1
+	_pending_boss_defeated = false
 	burst_timer = run_duration
 	_current_wave_in_stage = 1
 	Engine.time_scale = 1.0
@@ -312,29 +410,36 @@ func _update_hud() -> void:
 			_hud_exp_label.text = "EXP: %d" % run_currency
 		if _hud_total_currency_label and _save_manager and _save_manager.has_method("get_total_currency"):
 			var name_key: String = SaveManager.CURRENCY_DISPLAY_NAME if SaveManager else "Energy Fragments"
-				_hud_total_currency_label.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
-	func _start_spawner() -> void:
-		if use_wave_loop and _level_manager:
-			var is_boss: bool = _level_manager.is_boss_mini_stage(burst_index)
-			if is_boss:
-				_stop_spawner()
-				if boss_scene and not _boss_instance:
-					_spawn_boss()
+			_hud_total_currency_label.text = "%s: %d" % [name_key, _save_manager.get_total_currency()]
+
+
+func _start_spawner() -> void:
+	if use_wave_loop and _level_manager:
+		var is_boss: bool = _level_manager.is_boss_mini_stage(burst_index)
+		if is_boss:
+			_stop_spawner()
+			var resolved_boss: PackedScene = _resolve_stage_boss_scene()
+			if resolved_boss and not _boss_instance:
+				_spawn_boss()
 				return
-			_remove_boss()
-			_current_wave_in_stage = 1
-			if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
-				_wave_spawner.start_rogu_wave(burst_index, _current_wave_in_stage)
-			return
-		var is_boss: bool = _is_boss_burst(burst_index)
-		if _wave_spawner and _wave_spawner.has_method("start_burst"):
-			_wave_spawner.start_burst(burst_index, run_duration, is_boss)
-			_set_spawner_burst_time()
-		elif _wave_spawner and _wave_spawner.has_method("start_stage"):
-			_wave_spawner.start_stage(burst_index, run_duration)
-			_set_spawner_burst_time()
-		if is_boss and boss_scene and not _boss_instance:
-			_spawn_boss()
+			if _boss_instance and is_instance_valid(_boss_instance):
+				return
+			## Fallback：boss_scene 未設定但應為 boss 關卡 → 改為普通 wave，避免卡關冇內容。
+			push_warning("StageManager: boss_scene missing for boss mini-stage %d; falling back to normal wave." % burst_index)
+		_remove_boss()
+		_current_wave_in_stage = 1
+		if _wave_spawner and _wave_spawner.has_method("start_rogu_wave"):
+			_wave_spawner.start_rogu_wave(burst_index, _current_wave_in_stage)
+		return
+	var is_boss: bool = _is_boss_burst(burst_index)
+	if _wave_spawner and _wave_spawner.has_method("start_burst"):
+		_wave_spawner.start_burst(burst_index, run_duration, is_boss)
+		_set_spawner_burst_time()
+	elif _wave_spawner and _wave_spawner.has_method("start_stage"):
+		_wave_spawner.start_stage(burst_index, run_duration)
+		_set_spawner_burst_time()
+	if is_boss and _resolve_stage_boss_scene() and not _boss_instance:
+		_spawn_boss()
 
 
 func _on_event_bus_wave_cleared(wave_number: int) -> void:
@@ -609,6 +714,17 @@ func _on_upgrade_chosen(upgrade_resource: Resource) -> void:
 			var wn: int = _pending_wave_cleared_number
 			_pending_wave_cleared_number = -1
 			_process_wave_cleared(wn)
+		## 升級期間若 boss 死亡，補發 boss 清理流程（否則 _awaiting_burst_end_upgrade 永不設置，下一關卡起）。
+		if _pending_boss_defeated:
+			_pending_boss_defeated = false
+			if _boss_instance:
+				burst_timer = 0.0
+				_stop_spawner()
+				_run_boss_defeated_flow()
+		## 若升級期間 burst 已結束（boss 清理完成或 wave 清空），補發推進下一關流程。
+		## 冇呢段，_awaiting_burst_end_upgrade=true 但 level-up 路徑直接 return，burst_index 唔會加一，下一關卡唔會 spawn。
+		if _awaiting_burst_end_upgrade:
+			_transition_to_running_after_upgrade()
 		return
 	_transition_to_running_after_upgrade()
 

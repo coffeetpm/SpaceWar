@@ -13,11 +13,13 @@ class_name TrajectoryMover
 ##   enemy.add_child(m)
 
 enum Pattern {
-	STRAIGHT,   ## 直下：純垂直下墜
-	SINE,       ## 正弦：左右搖擺下落
+	STRAIGHT,   ## 直下：純垂直下墜（基礎雜兵）
+	SINE,       ## 正弦：左右搖擺 S 型下落
 	DIAGONAL,   ## 斜線：固定傾角下滑
 	ARC,        ## 弧線：大幅橫向弧線掃過
 	SWOOP,      ## 俯衝：先下落後向玩家撲擊
+	HOMING,     ## 直衝玩家：軟追蹤，以固定轉向率向玩家加速
+	ZIGZAG,     ## 閃避：每隔 flip_interval 隨機左右翻向，夾帶輕微下墜
 }
 
 @export var pattern: int = Pattern.STRAIGHT  ## 使用 int 以便 spawner 直接 assign
@@ -28,6 +30,21 @@ enum Pattern {
 @export var swoop_trigger_y: float = 260.0                           ## SWOOP 開始俯衝的 Y 值（世界座標）
 @export var despawn_margin: float = 140.0                            ## 離開視窗後 queue_free 緩衝
 
+@export_group("Homing")
+## HOMING：軟追蹤轉向率（rad/s）；值愈大愈緊迫，玩家愈難閃避。
+@export_range(0.2, 8.0, 0.05) var homing_turn_rate: float = 1.6
+## HOMING 速度倍率（相對 speed）；建議 ≥ 1.0 以免追唔到
+@export_range(0.5, 3.0, 0.05) var homing_speed_mul: float = 1.15
+
+@export_group("Zigzag")
+## 翻向間隔（秒）；實際會喺 [min,max] 區間隨機
+@export var zigzag_flip_min: float = 0.35
+@export var zigzag_flip_max: float = 0.75
+## 翻向時橫向速度（像素/秒）
+@export var zigzag_lateral_speed: float = 260.0
+## 下墜速度倍率（相對 speed），建議 0.35~0.6 令閃避感明顯
+@export_range(0.1, 1.5, 0.05) var zigzag_descend_mul: float = 0.45
+
 var _body: CharacterBody2D
 var _took_over: bool = false
 var _life: float = 0.0
@@ -35,6 +52,11 @@ var _base_x: float = 0.0
 var _phase_offset: float = 0.0
 var _swoop_dir: Vector2 = Vector2.ZERO
 var _swoop_locked: bool = false
+## HOMING：當前移動單位向量（帶有慣性，避免瞬間轉直角）
+var _homing_heading: Vector2 = Vector2.DOWN
+## ZIGZAG：當前橫向方向（+1/-1）、下次翻向時間
+var _zigzag_dir: int = 1
+var _zigzag_next_flip: float = 0.0
 
 
 func _ready() -> void:
@@ -54,6 +76,11 @@ func _ready() -> void:
 	_base_x = _body.global_position.x
 	_phase_offset = randf() * TAU
 
+	## 初始化 pattern 專屬狀態
+	_homing_heading = Vector2.DOWN
+	_zigzag_dir = 1 if randf() < 0.5 else -1
+	_zigzag_next_flip = randf_range(zigzag_flip_min, zigzag_flip_max)
+
 
 func _physics_process(delta: float) -> void:
 	if not _took_over or _body == null or not is_instance_valid(_body):
@@ -61,12 +88,12 @@ func _physics_process(delta: float) -> void:
 	if RunState and RunState.gameplay_frozen:
 		return
 	_life += delta
-	_body.velocity = _compute_velocity()
+	_body.velocity = _compute_velocity(delta)
 	_body.move_and_slide()
 	_check_despawn()
 
 
-func _compute_velocity() -> Vector2:
+func _compute_velocity(delta: float) -> Vector2:
 	match pattern:
 		Pattern.STRAIGHT:
 			return Vector2(0.0, speed)
@@ -98,7 +125,41 @@ func _compute_velocity() -> Vector2:
 					_lock_swoop_direction()
 			return _swoop_dir * speed * 1.9
 
+		Pattern.HOMING:
+			## 軟追蹤：heading 以 turn_rate 轉向「指向玩家」方向，避免瞬間直角扭轉。
+			var player: Node2D = _get_player()
+			if player and is_instance_valid(player):
+				var want: Vector2 = (player.global_position - _body.global_position)
+				if want.length_squared() > 0.01:
+					want = want.normalized()
+					## 以最大 turn_rate*delta 弧度，向 want 插值
+					var max_step: float = homing_turn_rate * delta
+					var cur_angle: float = _homing_heading.angle()
+					var tgt_angle: float = want.angle()
+					var diff: float = wrapf(tgt_angle - cur_angle, -PI, PI)
+					var step: float = clampf(diff, -max_step, max_step)
+					_homing_heading = Vector2.RIGHT.rotated(cur_angle + step)
+			## 保證最小 Y 分量，令敵機始終略向下，避免喺玩家上方滯空
+			if _homing_heading.y < 0.12:
+				_homing_heading.y = 0.12
+				_homing_heading = _homing_heading.normalized()
+			return _homing_heading * speed * homing_speed_mul
+
+		Pattern.ZIGZAG:
+			## 定時翻向，橫向速度高、縱向偏慢，令閃避節奏明顯
+			_zigzag_next_flip -= delta
+			if _zigzag_next_flip <= 0.0:
+				_zigzag_dir = -_zigzag_dir
+				_zigzag_next_flip = randf_range(zigzag_flip_min, zigzag_flip_max)
+			return Vector2(_zigzag_dir * zigzag_lateral_speed, speed * zigzag_descend_mul)
+
 	return Vector2(0.0, speed)
+
+
+func _get_player() -> Node2D:
+	if PlayerRef and PlayerRef.has_method("get_player"):
+		return PlayerRef.get_player()
+	return null
 
 
 func _lock_swoop_direction() -> void:
@@ -133,4 +194,9 @@ func _check_despawn() -> void:
 		right_x = vp_rect.size.x + despawn_margin
 	var pos: Vector2 = _body.global_position
 	if pos.y > bottom_y or pos.x < left_x or pos.x > right_x:
-		_body.queue_free()
+		## 優先走 EnemyBase/EnemyDasher 嘅 _despawn_silently：會發 died signal
+		## 令 WaveSpawner._alive_count 正常遞減，避免 wave 永遠清唔到。
+		if _body.has_method("_despawn_silently"):
+			_body._despawn_silently()
+		else:
+			_body.queue_free()

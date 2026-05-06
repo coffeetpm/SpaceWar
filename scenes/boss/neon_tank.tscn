@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://neon_tank_boss"]
+
+[ext_resource type="Script" path="res://scripts/boss/neon_tank.gd" id="1_tank"]
+
+[node name="NeonTank" type="Node2D"]
+script = ExtResource("1_tank")
+boss_name = "NEON TANK"
+max_health = 700
+phase_thresholds = [0.66, 0.33]
+body_color = Color(0.4, 0.8, 1.0, 1.0)
+accent_color = Color(1.0, 0.3, 0.2, 1.0)
+body_hdr_boost = 2.4
+move_speed = 52.0
+turret_rpm = 45.0
+fire_interval = 1.8
+bounce_shell_speed = 220.0
+bounce_shell_damage = 2
+bounce_max = 3

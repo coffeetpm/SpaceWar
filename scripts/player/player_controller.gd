@@ -200,13 +200,8 @@ func _physics_process(delta: float) -> void:
 	_update_lean(delta)
 
 
-func _update_lean(delta: float) -> void:
-	var vis: Node2D = $Visual as Node2D
-	if not vis:
-		return
-	var target_angle: float = velocity.angle() if velocity.length() > 18.0 else 0.0
-	target_angle = clampf(target_angle, -0.2, 0.2)
-	vis.rotation = lerp_angle(vis.rotation, target_angle, delta * 10.0)
+func _update_lean(_delta: float) -> void:
+	pass  ## Roll 已交由 ShipVisualController._process 處理
 
 
 func take_damage(amount: int, _source: Node = null) -> void:
@@ -219,6 +214,10 @@ func take_damage(amount: int, _source: Node = null) -> void:
 	EventBus.hit_flash_requested.emit(sprite, 0.1)
 	EventBus.hit_flash_requested.emit(null, 0.15)
 	EventBus.time_scale_dip_requested.emit(0.15, 0.3)
+	## 霓虹邊框白閃
+	var vis := $Visual as Node2D
+	if vis and vis.has_method("flash_hit"):
+		vis.flash_hit(0.12)
 
 
 func _is_invulnerable() -> bool:

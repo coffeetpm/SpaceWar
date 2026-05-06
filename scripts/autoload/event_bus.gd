@@ -36,6 +36,8 @@ signal screen_shake_requested(intensity: float, duration: float)
 signal bullet_spawn_requested(global_position: Vector2, direction: Vector2, speed: float, damage: int, is_player: bool, weapon_id: String)
 ## Same as bullet_spawn_requested but bullet will home toward nearest enemy (curved trail).
 signal bullet_spawn_requested_homing(global_position: Vector2, direction: Vector2, speed: float, damage: int, weapon_id: String)
+## BulletFactory: spawn a styled bullet (Plasma / Needle / Heavy). style_id = BulletFactory.BulletStyle.
+signal bullet_spawn_styled(global_position: Vector2, direction: Vector2, speed: float, damage: int, is_player: bool, weapon_id: String, style_id: int)
 signal muzzle_flash_requested(global_position: Vector2, weapon_id: String)
 signal enemy_died(enemy: Node, global_position: Vector2)
 signal explosion_requested(global_position: Vector2, scale: float, color: Color)
@@ -76,3 +78,7 @@ signal boss_clear_show_cleared
 signal boss_clear_player_glow
 ## Boss reward: one gameplay unlock (weapon / synergy / force). unlock_type, unlock_id, display_name. No stat boost.
 signal boss_reward_unlocked(unlock_type: String, unlock_id: String, display_name: String)
+## Legendary relic drop (boss 死亡後觸發特殊升級選單：Time Slow / Black Hole / Infinite Fire Rate)。
+signal boss_legendary_relic_dropped(boss_type: int, boss_name: String, drop_position: Vector2)
+## Boss 進場警報（BossWarning UI + bass boost + WorldEnvironment glow pulse）。
+signal boss_warning_requested(boss_name: String, duration: float)

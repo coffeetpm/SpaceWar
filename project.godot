@@ -35,6 +35,7 @@ ThemeManager="*res://scripts/autoload/theme_manager.gd"
 VisualLayers="*res://scripts/autoload/visual_layers.gd"
 LightLanguage="*res://scripts/autoload/light_language.gd"
 NeonStyleManager="*res://scripts/autoload/neon_style_manager.gd"
+BulletFactory="*res://scripts/autoload/bullet_factory.gd"
 HookLines="*res://scripts/copy/hook_lines.gd"
 
 [display]

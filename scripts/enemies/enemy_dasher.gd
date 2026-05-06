@@ -15,6 +15,11 @@ signal died(enemy: Node, at_position: Vector2)
 @export var explosion_color: Color = Color.ORANGE
 @export var currency_drop: int = 1
 
+@export_group("Offscreen Cleanup")
+@export var offscreen_rect_size: Vector2 = Vector2(96, 96)
+@export var offscreen_grace: float = 3.0
+@export var max_lifetime: float = 60.0
+
 enum State { APPROACH, TELEGRAPH, DASH, COOLDOWN }
 
 var current_hp: int
@@ -25,6 +30,10 @@ var _dash_direction: Vector2 = Vector2.UP
 var _death_started: bool = false
 var _telegraph_line: Line2D
 var _core_base_modulate: Color = Color(1, 1, 1, 1)
+var _vsn: VisibleOnScreenNotifier2D
+var _offscreen_timer: Timer
+var _has_entered_screen: bool = false
+var _alive_time: float = 0.0
 
 
 func _ready() -> void:
@@ -38,6 +47,52 @@ func _ready() -> void:
 	## 由 NeonStyleManager 依 Tier 自動套用霓虹裝飾。
 	if NeonStyleManager and NeonStyleManager.has_method("apply_to"):
 		NeonStyleManager.apply_to(self)
+	## 若場景冇指定 explosion_color（仍為 ORANGE 預設），改用霓虹色同步。
+	if has_meta("neon_color") and is_equal_approx(explosion_color.r, Color.ORANGE.r) \
+			and is_equal_approx(explosion_color.g, Color.ORANGE.g) \
+			and is_equal_approx(explosion_color.b, Color.ORANGE.b):
+		var nc: Variant = get_meta("neon_color")
+		if nc is Color:
+			explosion_color = nc
+	_setup_offscreen_cleanup()
+
+
+func _setup_offscreen_cleanup() -> void:
+	_vsn = VisibleOnScreenNotifier2D.new()
+	_vsn.rect = Rect2(-offscreen_rect_size * 0.5, offscreen_rect_size)
+	add_child(_vsn)
+	_vsn.screen_entered.connect(func() -> void:
+		_has_entered_screen = true
+		if _offscreen_timer and not _offscreen_timer.is_stopped():
+			_offscreen_timer.stop()
+	)
+	_vsn.screen_exited.connect(func() -> void:
+		if not _has_entered_screen or _death_started:
+			return
+		if _offscreen_timer and _offscreen_timer.is_stopped():
+			_offscreen_timer.start()
+	)
+	_offscreen_timer = Timer.new()
+	_offscreen_timer.one_shot = true
+	_offscreen_timer.wait_time = maxf(offscreen_grace, 0.1)
+	_offscreen_timer.timeout.connect(func() -> void:
+		if _death_started:
+			return
+		if _vsn and _vsn.is_on_screen():
+			return
+		_despawn_silently()
+	)
+	add_child(_offscreen_timer)
+
+
+func _despawn_silently() -> void:
+	if _death_started:
+		return
+	_death_started = true
+	collision_layer = 0
+	collision_mask = 0
+	died.emit(self, global_position)
+	queue_free()
 
 
 func _build_telegraph_visual() -> void:
@@ -134,6 +189,11 @@ func _update_telegraph(active: bool, direction: Vector2) -> void:
 func _process(_delta: float) -> void:
 	if _death_started:
 		return
+	## 絕對壽命上限 fallback：防止任何情況下嘅內存泄漏
+	_alive_time += _delta
+	if _alive_time >= max_lifetime:
+		_despawn_silently()
+		return
 	var core := get_node_or_null("Visual/Core") as CanvasItem
 	if core and _state == State.TELEGRAPH:
 		core.modulate = _core_base_modulate * 1.4
@@ -176,7 +236,9 @@ func _die() -> void:
 func _finish_death() -> void:
 	EventBus.enemy_died.emit(self, global_position)
 	EventBus.hitstop_requested.emit(0.08, 0.12)
-	EventBus.screen_shake_requested.emit(0.19, 0.14)
+	var shake_amp: float = clampf(0.38 * explosion_scale, 0.22, 0.75)
+	var shake_dur: float = clampf(0.15 + 0.06 * explosion_scale, 0.14, 0.32)
+	EventBus.screen_shake_requested.emit(shake_amp, shake_dur)
 	EventBus.sound_kill_requested.emit()
 	EventBus.explosion_requested.emit(global_position, explosion_scale, explosion_color)
 	died.emit(self, global_position)
